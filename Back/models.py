@@ -1,0 +1,48 @@
+import uuid
+from sqlalchemy import Column, String, DateTime, Uuid, ForeignKey
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from datetime import datetime, timezone
+
+
+class Base(DeclarativeBase):
+  pass
+
+class User(Base):
+
+  __tablename__ = "users"
+  # User ID
+  id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+  # Username
+  username: Mapped[str] = mapped_column(String(24), unique=True, index=True)
+
+  # Last act from the user
+  # nullable = True because of first time users
+  last_post_at: Mapped[DateTime | None] = mapped_column(DateTime, nullable= True)
+
+  # Relationships (link with "shots" db)
+  shots = relationship("Shot", back_populates="owner")
+
+class Shot(Base):
+  __tablename__ = "shots"
+
+  # Shot ID
+  id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+
+  # Shot caption and creation date
+  caption: Mapped[str] = mapped_column(String(50))
+  created_at: Mapped[datetime] = mapped_column(DateTime, default= lambda : datetime.now(timezone.utc))
+
+  # Relationship back to User
+  owner = relationship("User", back_populates="shots")
+
+class Comment(Base):
+  __tablename__ = "comments"
+
+  id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+  content: Mapped[str] = mapped_column(String(100))
+
+  # Links
+  user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
+  shot_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("shots.id"))
+
+  shot = relationship("Shot", back_populates="comments")
