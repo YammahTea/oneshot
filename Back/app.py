@@ -1,11 +1,12 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 
 # Import modules
-from Back.models import User
+from Back.models import User, Shot, Comment
 from Back.handle import check_daily_limit
 from Back.database import create_db_and_tables, get_async_session
 
@@ -17,41 +18,90 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 @app.post("/post")
-async def create_post(content: str, db: AsyncSession = Depends(get_async_session)):
+async def create_post(content: str = Form(""),
+                      db: AsyncSession = Depends(get_async_session)):
 
   """
   1- Get the current user
   2- Check if the user already posted for the day
-  3- Update the database with the user's last_post
-  4- Return post's details
+  3- Create the shot
+  4- Update user's last_post
+  5- Save to database
+  6- Return shot's JSON
   """
 
+  # 1- Get current user
   result = await db.execute(select(User).where(User.username == "clock"))
   user = result.scalars().first()
 
-  # create a user just for testing
   if not user:
     user = User(username="clock")
     db.add(user)
     await db.commit()
     await db.refresh(user)
 
+  # 2- Check Limits
   can_post = check_daily_limit(user.last_post_at)
   if not can_post:
     raise HTTPException(status_code=405, detail="You have already made your post for the day.")
 
+  # 3- Create the shot
+  new_shot = Shot(
+    caption=content,
+    user_id=user.id
+  )
+  db.add(new_shot)
 
+  # 4- Update user's last_post
   user.last_post_at = datetime.now(timezone.utc)
-  await db.commit()
 
-  return {"Status:": "Post successful!", "content": content}
+  # 5- Save to db
+  await db.commit()
+  await db.refresh(new_shot)
+
+  # 6- Return shot's JSON
+  return {
+    "status": "Post successful!",
+    "shot_id": str(new_shot.id),
+    "content": new_shot.caption
+  }
 
 
 """Home page for all the shots for everyone"""
-# @app.get("/shots")
-# async def shots(session: AsyncSession = Depends(get_async_session)):
-"""
-1-Get some of the shots in the database
-    this includes the comments, likes, caption, user who posted it, user's logo (to display beside user's name)
-2-return the shots informations so it can be used to render the home page on the frontend side
-"""
+@app.get("/shots")
+async def shots(session: AsyncSession = Depends(get_async_session)):
+
+  """
+  1-Grab 10 shots from the database by the created_at
+  2-link Shot with User db to avoid N+1 problem
+  3-Load shots data in as a JSON in an array
+  """
+
+  # 1-Grab 10 shots
+  # 2-Join User db to the shots
+  query = (
+        select(Shot)
+        .options(joinedload(Shot.owner)) # N+1 problem
+        .order_by(Shot.created_at.desc())
+        .limit(10)
+    )
+
+  result = await session.execute(query)
+  shots_list = result.scalars().all()
+
+  #Load shots data as a JSON in an array
+  shots_data = []
+
+  for shot in shots_list:
+    shots_data.append({
+      "id": str(shot.id),
+      "caption": shot.caption,
+      "created_at": shot.created_at.isoformat(),
+
+      "owner": shot.owner.username,
+      "owner_id": str(shot.owner.id) # For frontend part to check if the user owns the shot
+    })
+
+  return shots_data
+
+

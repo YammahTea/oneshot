@@ -17,7 +17,9 @@ class User(Base):
 
   # Last act from the user
   # nullable = True because of first time users
-  last_post_at: Mapped[DateTime | None] = mapped_column(DateTime, nullable= True)
+  last_post_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+  last_like_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+  last_comment_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
   # Relationships (link with "shots" db)
   shots = relationship("Shot", back_populates="owner")
@@ -32,8 +34,12 @@ class Shot(Base):
   caption: Mapped[str] = mapped_column(String(50))
   created_at: Mapped[datetime] = mapped_column(DateTime, default= lambda : datetime.now(timezone.utc))
 
-  # Relationship back to User
+  # User ID who owns the shot
+  user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
+
+  # Relationship with User and Comment
   owner = relationship("User", back_populates="shots")
+  comments = relationship("Comment", back_populates="shot")
 
 class Comment(Base):
   __tablename__ = "comments"
@@ -46,3 +52,6 @@ class Comment(Base):
   shot_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("shots.id"))
 
   shot = relationship("Shot", back_populates="comments")
+
+
+
