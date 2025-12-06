@@ -1,9 +1,11 @@
-from fastapi import FastAPI, HTTPException, Depends, Form
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
+from pydantic import BaseModel
 
 # Import modules
 from Back.models import User, Shot, Comment
@@ -17,8 +19,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+app.add_middleware(
+  CORSMiddleware,
+  allow_origins=["http://localhost:5173"],
+  allow_credentials=True,
+  allow_methods=["*"],
+  allow_headers=["*"],
+)
+
+class ShotCreate(BaseModel):
+  content: str
+
 @app.post("/post")
-async def create_post(content: str = Form(""),
+async def create_post(shot: ShotCreate,
                       db: AsyncSession = Depends(get_async_session)):
 
   """
@@ -47,7 +60,7 @@ async def create_post(content: str = Form(""),
 
   # 3- Create the shot
   new_shot = Shot(
-    caption=content,
+    caption=shot.content,
     user_id=user.id
   )
   db.add(new_shot)
