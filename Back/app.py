@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -27,15 +27,32 @@ app.add_middleware(
   allow_headers=["*"],
 )
 
+
+async def get_current_user(
+  x_username: str = Header(...),
+  db: AsyncSession = Depends(get_async_session)
+):
+  result = await db.execute(select(User).where(User.username == x_username))
+  user = result.scalars().first()
+
+  if not user:
+    user = User(username=x_username)
+  db.add(user)
+  await db.commit()
+  await db.refresh(user)
+
+  return user
+
 class ShotCreate(BaseModel):
   content: str
 
 @app.post("/post")
 async def create_post(shot: ShotCreate,
+                      user: User = Depends(get_current_user),
                       db: AsyncSession = Depends(get_async_session)):
 
   """
-  1- Get the current user
+  1- Get the current user (in the arguments)
   2- Check if the user already posted for the day
   3- Create the shot
   4- Update user's last_post
@@ -43,20 +60,10 @@ async def create_post(shot: ShotCreate,
   6- Return shot's JSON
   """
 
-  # 1- Get current user
-  result = await db.execute(select(User).where(User.username == "clock"))
-  user = result.scalars().first()
-
-  if not user:
-    user = User(username="clock")
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-
   # 2- Check Limits
   can_post = check_daily_limit(user.last_post_at)
   if not can_post:
-    raise HTTPException(status_code=405, detail="You have already made your post for the day.")
+    raise HTTPException(status_code=429, detail="You have already made your post for the day.")
 
   # 3- Create the shot
   new_shot = Shot(
@@ -76,7 +83,8 @@ async def create_post(shot: ShotCreate,
   return {
     "status": "Post successful!",
     "shot_id": str(new_shot.id),
-    "content": new_shot.caption
+    "content": new_shot.caption,
+    "owner": user.username
   }
 
 
