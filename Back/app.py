@@ -2,13 +2,14 @@ from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
+import uuid
 
 # Import modules
-from Back.models import User, Shot, Comment
+from Back.models import User, Shot, Comment, Like
 from Back.handle import check_daily_limit
 from Back.database import create_db_and_tables, get_async_session
 
@@ -44,6 +45,9 @@ async def get_current_user(
   return user
 
 class ShotCreate(BaseModel):
+  content: str
+
+class CommentCreate(BaseModel):
   content: str
 
 @app.post("/post")
@@ -102,13 +106,16 @@ async def shots(session: AsyncSession = Depends(get_async_session)):
   # 2-Join User db to the shots
   query = (
         select(Shot)
-        .options(joinedload(Shot.owner)) # N+1 problem
+        .options(
+    joinedload(Shot.owner), # Load Shot owner
+            joinedload(Shot.likes), # Load Likes
+            selectinload(Shot.comments).joinedload(Comment.owner)) # Load Comments AND the User who wrote each comment
         .order_by(Shot.created_at.desc())
         .limit(10)
     )
 
   result = await session.execute(query)
-  shots_list = result.scalars().all()
+  shots_list = result.scalars().unique().all()
 
   #Load shots data as a JSON in an array
   shots_data = []
@@ -120,9 +127,108 @@ async def shots(session: AsyncSession = Depends(get_async_session)):
       "created_at": shot.created_at.isoformat(),
 
       "owner": shot.owner.username,
-      "owner_id": str(shot.owner.id) # For frontend part to check if the user owns the shot
+      "owner_id": str(shot.owner.id), # For frontend part to check if the user owns the shot
+
+      "like_count": len(shot.likes),
+
+      # Array of comments
+      "comments": [
+        {
+          "id": str(c.id),
+          "owner": c.owner.username, # Uses the new relationship
+          "content": c.content
+        }
+        for c in shot.comments
+      ]
     })
 
   return shots_data
 
 
+@app.post("/shot/{shot_id}/like")
+async def like_shot(
+  shot_id: str,
+  user: User = Depends(get_current_user),
+  db: AsyncSession = Depends(get_async_session)
+):
+
+  """
+  1- Check limits (if user already liked today)
+  2- Check if Shot exists
+  3- Update "Like" db
+  4- Update last_like_at for the user
+  5- Return status and number of likes left for the user
+  """
+
+  can_like = check_daily_limit(user.last_like_at)
+  if not can_like:
+    raise HTTPException(status_code=429, detail="You already used your One Like for today.")
+
+  try:
+    shot_uuid = uuid.UUID(shot_id) # convert from str to uuid
+  except ValueError:
+    raise HTTPException(status_code=400, detail="Invalid Shot ID format")
+
+  result = await db.execute(select(Shot).where(Shot.id == shot_uuid))
+  target_shot = result.scalars().first()
+
+  if not target_shot:
+    raise HTTPException(status_code=404, detail="This Shot doesn't even exist...")
+
+
+  new_like = Like(user_id= user.id, shot_id = target_shot.id)
+  db.add(new_like)
+
+  user.last_like_at = datetime.now(timezone.utc)
+
+  await db.commit()
+
+  return {"status": f"Liked! the post with the id {target_shot.id}",
+          "remaining likes for the user": 0}
+
+
+@app.post("/shot/{shot_id}/comment")
+async def post_comment(
+  shot_id: str,
+  comment: CommentCreate,
+  user: User = Depends(get_current_user),
+  db: AsyncSession = Depends(get_async_session)
+):
+
+  """
+  1- Check limits
+  2- Check if shot exists
+  3- Update "Comment" db
+  4- Update last_comment_at for the user
+  5- Return status and content of the comment and the shot that was commented on
+  """
+
+  can_comment = check_daily_limit(user.last_comment_at)
+  if not can_comment:
+    raise HTTPException(status_code=429, detail="You already used your One Comment for today.")
+
+  try:
+    shot_uuid = uuid.UUID(shot_id) # convert from str to uuid
+  except ValueError:
+    raise HTTPException(status_code=400, detail="Invalid Shot ID")
+
+  result = await db.execute(select(Shot).where(Shot.id == shot_uuid))
+  target_shot = result.scalars().first()
+
+  if not target_shot:
+    raise HTTPException(status_code=404, detail="Shot not found")
+
+  new_comment = Comment(
+    content=comment.content,
+    user_id=user.id,
+    shot_id=target_shot.id
+  )
+  db.add(new_comment)
+
+  user.last_comment_at = datetime.now(timezone.utc)
+
+  await db.commit()
+
+  return {"status": "Commented!",
+          "content": comment.content,
+          "shot_id with the comment": shot_uuid}

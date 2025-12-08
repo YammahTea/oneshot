@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, DateTime, Uuid, ForeignKey
+from sqlalchemy import String, DateTime, Uuid, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from datetime import datetime, timezone
 
@@ -37,9 +37,10 @@ class Shot(Base):
   # User ID who owns the shot
   user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
 
-  # Relationship with User and Comment
+  # Relationship with User + Comment + Like
   owner = relationship("User", back_populates="shots")
   comments = relationship("Comment", back_populates="shot")
+  likes = relationship("Like", back_populates="shot")
 
 class Comment(Base):
   __tablename__ = "comments"
@@ -52,6 +53,15 @@ class Comment(Base):
   shot_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("shots.id"))
 
   shot = relationship("Shot", back_populates="comments")
+  owner = relationship("User") # to be able to access the user's name who posted the comment
 
+class Like(Base):
 
+  __tablename__ = "likes"
 
+  id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+
+  user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
+  shot_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("shots.id"))
+
+  shot = relationship("Shot", back_populates="likes")

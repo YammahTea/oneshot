@@ -1,4 +1,5 @@
 import {useState, useEffect} from 'react'
+import ShotCard from './components/ShotCard'
 
 function App() {
 
@@ -171,15 +172,13 @@ function App() {
       {/* Feed Section */}
       <div className="w-full max-w-md space-y-4 px-4 pb-10">
         {shots.map((shot) => (
-          <div key={shot.id} className="bg-white p-4 rounded shadow border-l-4 border-blue-500 transition hover:shadow-md">
-            <div className="flex justify-between items-baseline">
-              <p className="font-bold text-gray-700">@{shot.owner}</p>
-              <p className="text-xs text-gray-400">
-                {new Date(shot.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            </div>
-            <h2 className="text-2xl mt-2 font-serif text-center">{shot.caption}</h2>
-          </div>
+          // components/ShotCard.jsx
+          <ShotCard
+            key={shot.id}
+            shot={shot}
+            currentUser={currentUser}
+            refreshFeed={fetchShots}
+          />
         ))}
       </div>
 
