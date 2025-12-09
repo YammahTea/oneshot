@@ -69,6 +69,7 @@ export default function ShotCard({ shot, currentUser, refreshFeed }) {
 
   return (
     <div className="bg-white p-4 rounded shadow border-l-4 border-blue-500 transition hover:shadow-md mb-4">
+
       {/* HEADER */}
       <div className="flex justify-between items-baseline mb-2">
         <p className="font-bold text-gray-700">@{shot.owner}</p>
@@ -76,6 +77,17 @@ export default function ShotCard({ shot, currentUser, refreshFeed }) {
           {new Date(shot.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>
       </div>
+
+      {/* --- IMAGE DISPLAY --- */}
+      {shot.image_url && (
+        <div className="mb-4 rounded-lg overflow-hidden border border-gray-200">
+          <img
+            src={`http://127.0.0.1:8000${shot.image_url}`}
+            alt="Shot visual"
+            className="w-full h-auto object-cover max-h-96"
+          />
+        </div>
+      )}
 
       {/* CAPTION */}
       <h2 className="text-2xl font-serif text-center mb-4">{shot.caption}</h2>

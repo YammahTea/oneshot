@@ -30,9 +30,10 @@ class Shot(Base):
   # Shot ID
   id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
 
-  # Shot caption and creation date
+  # Shot image url, caption and creation date
   caption: Mapped[str] = mapped_column(String(50))
   created_at: Mapped[datetime] = mapped_column(DateTime, default= lambda : datetime.now(timezone.utc))
+  image_url: Mapped[str | None] = mapped_column(String, nullable=True)
 
   # User ID who owns the shot
   user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))

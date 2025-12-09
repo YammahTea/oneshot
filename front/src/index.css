@@ -29,3 +29,63 @@
   0 0.0625em 0 0 #ececec, 0 0.125em 0 0 #e0e0e0, 0 0.125em 0 0 #dedede,
   0 0.2em 0 0 #dcdcdc, 0 0.225em 0 0 #cacaca, 0 0.225em 0.375em 0 #cecece;
 }
+
+.content__item {
+  width: auto;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.uploadImageButton {
+  pointer-events: auto;
+  cursor: pointer;
+  background: #e7e7e7;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  position: relative;
+  display: inline-block;
+}
+
+.uploadImageButton::before,
+.uploadImageButton::after {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.uploadImageButton--pan {
+  font-family: aktiv-grotesk-extended, sans-serif;
+  font-weight: 100;
+  border: 2px solid #000;
+  border-radius: 3rem;
+  overflow: hidden;
+  color: #fff;
+}
+
+.uploadImageButton--pan span {
+  position: relative;
+  mix-blend-mode: difference;
+}
+
+.uploadImageButton--pan::before {
+  content: "";
+  background: #000;
+  transition: transform 0.3s cubic-bezier(0.7, 0, 0.2, 1);
+}
+
+.uploadImageButton--pan:hover::before {
+  transform: translate3d(0, -100%, 0);
+}

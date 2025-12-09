@@ -1,12 +1,18 @@
-from fastapi import FastAPI, HTTPException, Depends, Header
+import shutil
+
+from fastapi import FastAPI, HTTPException, Depends, Header, Form, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload, selectinload
+
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
 import uuid
+import os
 
 # Import modules
 from Back.models import User, Shot, Comment, Like
@@ -28,6 +34,9 @@ app.add_middleware(
   allow_headers=["*"],
 )
 
+os.makedirs("Back/uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="Back/uploads"), name="uploads")
+
 
 async def get_current_user(
   x_username: str = Header(...),
@@ -44,24 +53,25 @@ async def get_current_user(
 
   return user
 
-class ShotCreate(BaseModel):
-  content: str
-
 class CommentCreate(BaseModel):
   content: str
 
 @app.post("/post")
-async def create_post(shot: ShotCreate,
-                      user: User = Depends(get_current_user),
-                      db: AsyncSession = Depends(get_async_session)):
+async def create_post(
+  caption: str = Form(...),
+  image: UploadFile | None = File(default=None),
+  user: User = Depends(get_current_user),
+  db: AsyncSession = Depends(get_async_session)
+):
 
   """
-  1- Get the current user (in the arguments)
+  1- Get caption, image and current user (in the arguments)
   2- Check if the user already posted for the day
-  3- Create the shot
-  4- Update user's last_post
-  5- Save to database
-  6- Return shot's JSON
+  3- Process image if it exists
+  4- Create the shot
+  5- Update user's last_post
+  6- Save to database
+  7- Return shot's JSON
   """
 
   # 2- Check Limits
@@ -69,17 +79,44 @@ async def create_post(shot: ShotCreate,
   if not can_post:
     raise HTTPException(status_code=429, detail="You have already made your post for the day.")
 
-  # 3- Create the shot
+  # 3- Process image (if it exists)
+
+  image_path = None
+  if image:
+
+    # ============== Security check ============
+    ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
+
+    if image.content_type not in ALLOWED_TYPES:
+      raise HTTPException(
+        status_code=400,
+        detail="Invalid file type. Only JPEG, PNG, and WEBP images are allowed."
+      )
+
+    # ============== Saving image ==============
+    # File name will be: user_timestamp to prevent overwrite
+    file_extension = image.filename.split(".")[-1]
+    unique_name = f"{user.id}+{datetime.now().timestamp()}.{file_extension}"
+    save_location = f"Back/uploads/{unique_name}"
+
+    with open(save_location, "wb") as buffer:
+      shutil.copyfileobj(image.file, buffer)
+
+    image_path = f"/uploads/{unique_name}"
+
+
+  # 4- Create the shot
   new_shot = Shot(
-    caption=shot.content,
-    user_id=user.id
+    caption=caption,
+    user_id=user.id,
+    image_url = image_path
   )
   db.add(new_shot)
 
-  # 4- Update user's last_post
+  # 5- Update user's last_post
   user.last_post_at = datetime.now(timezone.utc)
 
-  # 5- Save to db
+  # 6- Save to db
   await db.commit()
   await db.refresh(new_shot)
 
@@ -88,6 +125,7 @@ async def create_post(shot: ShotCreate,
     "status": "Post successful!",
     "shot_id": str(new_shot.id),
     "content": new_shot.caption,
+    "image_url": new_shot.image_url,
     "owner": user.username
   }
 
@@ -139,7 +177,9 @@ async def shots(session: AsyncSession = Depends(get_async_session)):
           "content": c.content
         }
         for c in shot.comments
-      ]
+      ],
+
+      "image_url": shot.image_url
     })
 
   return shots_data

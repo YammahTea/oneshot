@@ -8,6 +8,7 @@ function App() {
 
   const [shots, setShots] = useState([]);
   const [input, setInput] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -53,14 +54,22 @@ function App() {
     await new Promise(r => setTimeout(r, 2000));
     setError(null);
 
+    // switched from json to formData
+    const formData = new FormData();
+    formData.append('caption', input);
+    if (selectedFile) {
+      formData.append('image', selectedFile)
+    }
+
+
 
     try {
       const response = await fetch('http://127.0.0.1:8000/post', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-username': currentUser,},
-        body: JSON.stringify({content: input})
+          'x-username': currentUser
+        },
+        body: formData
       });
 
       if (!response.ok) {
@@ -69,6 +78,7 @@ function App() {
       }
 
       setInput("")
+      setSelectedFile(null)
 
     } catch (err) {
       setError(err.message);
@@ -77,6 +87,22 @@ function App() {
       await fetchShots();
     }
   }
+
+
+  // Helper to make "really_long_image_name.png" -> "really_lon....png"
+  const formatFileName = (name) => {
+    if (!name) return "";
+    if (name.length <= 20) return name; // If short, return as is
+
+    // Split name and extension
+    const parts = name.split('.');
+    const ext = parts.pop(); // get "png"
+    const base = parts.join('.'); // get the rest
+
+    // Take first 10 chars + ... + extension
+    return `${base.substring(0, 10)}...${ext}`;
+  }
+
 
   // UI part
 
@@ -132,7 +158,8 @@ function App() {
 
 
       {/* Input Section */}
-      <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md mb-6">
+      <div className="bg-white p-10 rounded-lg shadow-md w-full max-w-md mb-6">
+
         <input
           type="text"
           placeholder={`What is your word, ${currentUser}?`}
@@ -141,6 +168,7 @@ function App() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />
+
 
         {error && <p className="text-red-500 text-center mb-2 font-bold">{error}</p>}
 
@@ -158,6 +186,48 @@ function App() {
             </p>
           </div>
         </button>
+
+        {/* File Input */}
+        <div className="mb-4 mt-2 flex items-center justify-center gap-2">
+          {/* 1. The Real Input (Hidden) */}
+          <input
+            type="file"
+            id="file-upload"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => setSelectedFile(e.target.files[0])}
+          />
+
+          {/* 2. The Custom Button (Label) */}
+          <div className="content__item">
+            <label
+              htmlFor="file-upload"
+              className="uploadImageButton uploadImageButton--pan"
+            >
+              {/* Dynamic Text: Change based on state */}
+              <span>{selectedFile ? "Change Image" : "Upload Image"}</span>
+            </label>
+          </div>
+
+          {/* 3. The Filename Display */}
+          {selectedFile && (
+            <span className="text-sm text-gray-500 italic">
+                    {formatFileName(selectedFile.name)}
+                </span>
+          )}
+
+          {/* 4. A tiny "X" to remove the file if they change their mind */}
+          {selectedFile && (
+            <button
+              onClick={() => setSelectedFile(null)}
+              className="text-red-500 hover:text-red-700 font-bold ml-1"
+            >
+              ✕
+            </button>
+          )}
+
+        </div>
+
         <button
           onClick={() => {
             localStorage.removeItem("oneshot_username");
@@ -167,6 +237,7 @@ function App() {
         >
           Logout
         </button>
+
       </div>
 
       {/* Feed Section */}
@@ -174,10 +245,10 @@ function App() {
         {shots.map((shot) => (
           // components/ShotCard.jsx
           <ShotCard
-            key={shot.id}
-            shot={shot}
-            currentUser={currentUser}
-            refreshFeed={fetchShots}
+            key= {shot.id}
+            shot= {shot}
+            currentUser= {currentUser}
+            refreshFeed= {fetchShots}
           />
         ))}
       </div>

@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 
-def check_daily_limit(last_action_time: datetime | None) -> bool:
+from sqlalchemy.orm import InstrumentedAttribute
+
+def check_daily_limit(last_action_time: InstrumentedAttribute[datetime | None]) -> bool:
     """
     Returns True if the user can act.
     Returns False if they already acted today.
