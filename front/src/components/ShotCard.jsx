@@ -82,7 +82,11 @@ export default function ShotCard({ shot, currentUser, refreshFeed }) {
       {shot.image_url && (
         <div className="mb-4 rounded-lg overflow-hidden border border-gray-200">
           <img
-            src={`http://127.0.0.1:8000${shot.image_url}`}
+            src={
+              shot.image_url.startsWith("http")
+                ? shot.image_url  // It's a Cloud Link (R2) -> Use as is
+                : `http://127.0.0.1:8000${shot.image_url}` // It's Local -> Add localhost
+            }
             alt="Shot visual"
             className="w-full h-auto object-cover max-h-96"
           />

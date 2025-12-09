@@ -18,6 +18,7 @@ import os
 from Back.models import User, Shot, Comment, Like
 from Back.handle import check_daily_limit
 from Back.database import create_db_and_tables, get_async_session
+from Back.storage import save_file
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -37,7 +38,7 @@ app.add_middleware(
 os.makedirs("Back/uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="Back/uploads"), name="uploads")
 
-
+""" HELPER FUNCTION TO GET THE CURRENT USER"""
 async def get_current_user(
   x_username: str = Header(...),
   db: AsyncSession = Depends(get_async_session)
@@ -56,6 +57,7 @@ async def get_current_user(
 class CommentCreate(BaseModel):
   content: str
 
+""" CREATE POST (SHOT) """
 @app.post("/post")
 async def create_post(
   caption: str = Form(...),
@@ -97,19 +99,15 @@ async def create_post(
     # File name will be: user_timestamp to prevent overwrite
     file_extension = image.filename.split(".")[-1]
     unique_name = f"{user.id}+{datetime.now().timestamp()}.{file_extension}"
-    save_location = f"Back/uploads/{unique_name}"
 
-    with open(save_location, "wb") as buffer:
-      shutil.copyfileobj(image.file, buffer)
-
-    image_path = f"/uploads/{unique_name}"
+    image_url = save_file(image, unique_name) # Decide weather to save into Cloud or local
 
 
   # 4- Create the shot
   new_shot = Shot(
     caption=caption,
     user_id=user.id,
-    image_url = image_path
+    image_url = image_url
   )
   db.add(new_shot)
 
