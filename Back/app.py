@@ -83,7 +83,7 @@ async def create_post(
 
   # 3- Process image (if it exists)
 
-  image_path = None
+  image_url = None
   if image:
 
     # ============== Security check ============

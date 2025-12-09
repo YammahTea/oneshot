@@ -94,7 +94,7 @@ export default function ShotCard({ shot, currentUser, refreshFeed }) {
       )}
 
       {/* CAPTION */}
-      <h2 className="text-2xl font-serif text-center mb-4">{shot.caption}</h2>
+      <h2 className="text-2xl font-serif text-center mb-4 break-words w-full">{shot.caption}</h2>
 
       {/* ACTIONS BAR */}
       <div className="flex items-center gap-4 text-gray-500 border-t pt-3">
@@ -125,7 +125,7 @@ export default function ShotCard({ shot, currentUser, refreshFeed }) {
         {shot.comments.map(c => (
           <div key={c.id} className="mb-1">
             <span className="font-bold text-gray-700 mr-2">@{c.owner}:</span>
-            <span className="text-gray-600">{c.content}</span>
+            <span className="text-gray-600 break-words w-full">{c.content}</span>
           </div>
         ))}
 
