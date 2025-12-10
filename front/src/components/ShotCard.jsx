@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Heart, MessageCircle, Send } from 'lucide-react'
 
-export default function ShotCard({ shot, currentUser, refreshFeed }) {
+export default function ShotCard({ token, shot, currentUser, refreshFeed }) {
   const [isCommenting, setIsCommenting] = useState(false)
   const [commentText, setCommentText] = useState("")
   const [commentError, setCommentError] = useState(null)
@@ -14,9 +14,7 @@ export default function ShotCard({ shot, currentUser, refreshFeed }) {
     try {
       const response = await fetch(`http://127.0.0.1:8000/shot/${shot.id}/like`, {
         method: 'POST',
-        headers: {
-          'x-username': currentUser
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (!response.ok) {
@@ -41,14 +39,18 @@ export default function ShotCard({ shot, currentUser, refreshFeed }) {
     setCommentError(null);
 
     try {
+      console.log("Before fetching");
       const response = await fetch(`http://127.0.0.1:8000/shot/${shot.id}/comment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-username': currentUser
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ content: commentText })
       });
+
+      console.log("After fetching");
+      console.log("Checking if fetch is ok");
 
       if (!response.ok) {
         const err = await response.json();
@@ -58,9 +60,11 @@ export default function ShotCard({ shot, currentUser, refreshFeed }) {
         setIsCommenting(false);
         refreshFeed();
       }
+      console.log("After checking if fetch is ok");
 
 
     } catch (e) {
+      console.log("Inisde catch blokc");
       setCommentError(e.message);
     } finally {
       setLoading(false);

@@ -3,6 +3,7 @@ import shutil
 from fastapi import FastAPI, HTTPException, Depends, Header, Form, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -13,12 +14,14 @@ from contextlib import asynccontextmanager
 from pydantic import BaseModel
 import uuid
 import os
+import jwt
 
 # Import modules
 from Back.models import User, Shot, Comment, Like
 from Back.handle import check_daily_limit
 from Back.database import create_db_and_tables, get_async_session
 from Back.storage import save_file
+from Back.auth import hash_password, verify_password, create_access_token, SECRET_KEY, ALGORITHM
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -39,23 +42,51 @@ os.makedirs("Back/uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="Back/uploads"), name="uploads")
 
 """ HELPER FUNCTION TO GET THE CURRENT USER"""
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
 async def get_current_user(
-  x_username: str = Header(...),
+  token: str = Depends(oauth2_scheme),
   db: AsyncSession = Depends(get_async_session)
 ):
-  result = await db.execute(select(User).where(User.username == x_username))
+
+  credentials_exception = HTTPException(
+    status_code=401,
+    detail="Could not validate credentials",
+    headers={"WWW-Authenticate": "Bearer"},
+  )
+
+  try:
+    # 1- Decode the Token
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    username: str = payload.get("sub")
+
+    if username is None:
+      raise credentials_exception
+
+  except jwt.PyJWTError:
+    raise credentials_exception
+
+  # 2- Find User in DB
+  result = await db.execute(select(User).where(User.username == username))
   user = result.scalars().first()
 
-  if not user:
-    user = User(username=x_username)
-  db.add(user)
-  await db.commit()
-  await db.refresh(user)
+  if user is None:
+    raise credentials_exception
 
   return user
 
+""" Base Models """
 class CommentCreate(BaseModel):
   content: str
+
+class UserRegister(BaseModel):
+  username: str
+  password: str
+
+class UserLogin(BaseModel):
+  username: str
+  password: str
+
 
 """ CREATE POST (SHOT) """
 @app.post("/post")
@@ -198,22 +229,25 @@ async def like_shot(
   5- Return status and number of likes left for the user
   """
 
+  # 1- Check limits
   can_like = check_daily_limit(user.last_like_at)
   if not can_like:
     raise HTTPException(status_code=429, detail="You already used your One Like for today.")
 
+  # 1.5- Check if the provided shot ID is valid
   try:
     shot_uuid = uuid.UUID(shot_id) # convert from str to uuid
   except ValueError:
     raise HTTPException(status_code=400, detail="Invalid Shot ID format")
 
+  # 2- Check if shot exists
   result = await db.execute(select(Shot).where(Shot.id == shot_uuid))
   target_shot = result.scalars().first()
 
   if not target_shot:
     raise HTTPException(status_code=404, detail="This Shot doesn't even exist...")
 
-
+  # 3- Create like + add like to db and updated last act
   new_like = Like(user_id= user.id, shot_id = target_shot.id)
   db.add(new_like)
 
@@ -241,21 +275,25 @@ async def post_comment(
   5- Return status and content of the comment and the shot that was commented on
   """
 
+  # 1- Check limits
   can_comment = check_daily_limit(user.last_comment_at)
   if not can_comment:
     raise HTTPException(status_code=429, detail="You already used your One Comment for today.")
 
+  # 1.5- Check if the provided shot ID is valid
   try:
     shot_uuid = uuid.UUID(shot_id) # convert from str to uuid
   except ValueError:
     raise HTTPException(status_code=400, detail="Invalid Shot ID")
 
+  # 2- Check if shot exists
   result = await db.execute(select(Shot).where(Shot.id == shot_uuid))
   target_shot = result.scalars().first()
 
   if not target_shot:
     raise HTTPException(status_code=404, detail="Shot not found")
 
+  # 3- Create comment + add comment to db and updated last act
   new_comment = Comment(
     content=comment.content,
     user_id=user.id,
@@ -264,9 +302,79 @@ async def post_comment(
   db.add(new_comment)
 
   user.last_comment_at = datetime.now(timezone.utc)
-
   await db.commit()
 
   return {"status": "Commented!",
           "content": comment.content,
           "shot_id with the comment": shot_uuid}
+
+
+@app.post("/auth/register")
+async def register(
+  user_data: UserRegister,
+  db: AsyncSession = Depends(get_async_session)
+):
+  """
+  1- Check if username exists
+  2- Hash password
+  3- Create user
+  4- Generate JWT
+  """
+
+  # 1- Check if username exists
+  result = await db.execute(select(User).where(User.username == user_data.username))
+  existing_user = result.scalars().first()
+
+  if existing_user:
+    raise HTTPException(status_code=400, detail="Username already taken.")
+
+  # 2- Hash password
+  hashed_pwd = hash_password(user_data.password)
+
+  # 3- Create the user
+  new_user = User(
+    username = user_data.username,
+    hashed_password = hashed_pwd
+  )
+
+  db.add(new_user)
+  await db.commit()
+  await db.refresh(new_user)
+
+
+  # 4- Generate the JWT
+  access_token = create_access_token(data={"sub": new_user.username})
+
+  return {"access_token": access_token, "token_type": "bearer", "username": new_user.username}
+
+
+
+
+@app.post("/auth/login")
+async def login(
+  form_data: OAuth2PasswordRequestForm = Depends(),
+  db: AsyncSession = Depends(get_async_session)
+):
+
+  """
+  1- Find the user
+  2- Check if User exists AND Password match
+  3- Create (JWT)
+  """
+
+  # 1- Find the user
+  result = await db.execute(select(User).where(User.username == form_data.username))
+  user = result.scalars().first()
+
+  # 2- Check credentials
+  if not user or not verify_password(form_data.password, user.hashed_password):
+    raise HTTPException(
+      status_code=401,
+      detail=["Incorrect username or password"],
+      headers={"WWW-Authenticate": "Bearer"}
+    )
+
+  # 3- Create JWT
+  access_token = create_access_token(data={"sub": user.username})
+
+  return {"access_token": access_token, "token_type": "bearer", "username": user.username}

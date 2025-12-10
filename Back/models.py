@@ -15,6 +15,9 @@ class User(Base):
   # Username
   username: Mapped[str] = mapped_column(String(24), unique=True, index=True)
 
+  # Hashed password
+  hashed_password: Mapped[str] = mapped_column(String, nullable=False)
+
   # Last act from the user
   # nullable = True because of first time users
   last_post_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

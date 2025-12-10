@@ -1,95 +1,158 @@
 import {useState, useEffect} from 'react'
 import ShotCard from './components/ShotCard'
+import AuthScreen from './components/AuthScreen'
 
 function App() {
 
-  const [loginInput, setLoginInput] = useState('');
-  const [loginError, setLoginError] = useState(null);
-
+  // ----- APP STATE -----
   const [shots, setShots] = useState([]);
   const [input, setInput] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [currentUser, setCurrentUser] = useState(
-    localStorage.getItem('oneshot_username' || '')
-  );
+  // ----- AUTH STATE -----
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState(null);
 
+  // ----- USER STATE -----
+  const [currentUser, setCurrentUser] = useState(localStorage.getItem('oneshot_username') || null);
+  const [token, setToken] = useState(localStorage.getItem('oneshot_token') || null);
 
 
   // Runs once at the beginning to fetch shots
   useEffect(() => {
-    fetchShots()
-  }, [])
+    if (currentUser || token) {fetchShots()}
+  }, [currentUser, token]);
 
-  // Function to fetch shots from python
-  const fetchShots = async () => {
+  // Function for login
+  const handleLogin = async (e, username, password) => {
+    e.preventDefault()
+    setAuthLoading(true);
+    setAuthError(null);
+
+    const formData = new FormData();
+    formData.append('username', username);
+    formData.append('password', password);
+
+    try{
+      const response = await fetch(`http://127.0.0.1:8000/auth/login`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || "Failed to login");
+      }
+
+      const data = await response.json();
+      completeAuth(data);
+
+    } catch (err) {
+      setAuthError(err.message);
+    } finally {
+      setAuthLoading(false);
+    }
+
+  };
+
+  // Function to register
+  const handleRegister = async (e, username, password) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError(null);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/shots');
-      const data = await response.json()
-      setShots(data)
+      const response = await fetch('http://127.0.0.1:8000/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || "Registration failed");
+      }
+
+      const data = await response.json();
+      completeAuth(data);
+
+    } catch (err) {
+      setAuthError(err.message);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Helper function to save data
+  const completeAuth = (data) => {
+    localStorage.setItem('oneshot_token', data.access_token);
+    localStorage.setItem('oneshot_username', data.username);
+    setToken(data.access_token);
+    setCurrentUser(data.username);
+  }
+
+  // Function for LOGOUT
+  const handleLogout = () => {
+    localStorage.removeItem('oneshot_token');
+    localStorage.removeItem('oneshot_username');
+    setCurrentUser(null); setToken(null);
+    window.location.reload();
+  }
+
+  // Function to fetch shots
+  const fetchShots = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/shots', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        setShots(await response.json());
+      }
+
     } catch (err) {
       console.error("Failed to fetch data:", err);
     }
   }
 
-  // Function for login
-  const handleLogin = () => {
-    if (!loginInput.trim()) {
-      setLoginError("You must specify a username silly!");
-      return;
-    }
-
-    localStorage.setItem('oneshot_username', loginInput); // save username in the browser memory
-    setCurrentUser(loginInput);
-  }
-
-  // Function to send data to python
+  // Function to handle posting a shot
   const handlePost = async () => {
     if (!input || isSubmitting) return;
 
     setIsSubmitting(true);
-    await new Promise(r => setTimeout(r, 2000));
     setError(null);
 
-    // switched from json to formData
     const formData = new FormData();
     formData.append('caption', input);
     if (selectedFile) {
-      formData.append('image', selectedFile)
+      formData.append('image', selectedFile);
     }
-
-
 
     try {
       const response = await fetch('http://127.0.0.1:8000/post', {
         method: 'POST',
-        headers: {
-          'x-username': currentUser
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
         body: formData
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Something went wrong!");
+        throw new Error("You have already made your Shot silly!");
       }
 
-      setInput("")
-      setSelectedFile(null)
+      setInput(""); setSelectedFile(null);
+      await fetchShots();
 
     } catch (err) {
       setError(err.message);
     } finally {
       setIsSubmitting(false);
-      await fetchShots();
     }
   }
 
 
-  // Helper to make "really_long_image_name.png" -> "really_lon....png"
+  // Helper function to make "really_long_image_name.png" -> "really_lon....png"
   const formatFileName = (name) => {
     if (!name) return "";
     if (name.length <= 20) return name; // If short, return as is
@@ -103,47 +166,19 @@ function App() {
     return `${base.substring(0, 10)}...${ext}`;
   }
 
-
-  // UI part
-
-  // Login screen
+  // --- THE ROUTER SWITCH ---
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm text-center">
-          <h1 className="text-4xl font-bold text-black mb-2">OneShot.</h1>
-          <p className="text-gray-500 mb-6">Pick a name. Make it count.</p>
-
-          <input
-            type="text"
-            placeholder="username"
-            className="w-full border-2 border-gray-200 p-3 rounded-lg mb-4 text-center text-xl focus:border-black outline-none transition"
-            value={loginInput}
-            onChange={(e) => {
-              setLoginInput(e.target.value)
-              setLoginError(null)
-            }}
-            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-          />
-
-          {loginError && <p className="text-red-500 text-center mb-2 font-bold">{loginError}</p>}
-
-          <button
-            onClick={handleLogin}
-            id="LoginButton"
-          >
-            Enter
-          </button>
-
-        </div>
-      </div>
-
-    )
+      <AuthScreen
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+        authLoading={authLoading}
+        authError={authError}
+      />
+    );
   }
 
-
-
-  // --- 5. MAIN APP UI (Logged In) ---
+  // --- MAIN APP (FEED) ---
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10 justify-center">
 
@@ -245,6 +280,7 @@ function App() {
         {shots.map((shot) => (
           // components/ShotCard.jsx
           <ShotCard
+            token={token}
             key= {shot.id}
             shot= {shot}
             currentUser= {currentUser}
@@ -256,5 +292,6 @@ function App() {
     </div>
   )
 }
+
 export default App
 
