@@ -1,22 +1,18 @@
 import { useState } from 'react';
+import Toast from './Toast.jsx'
 
-export default function AuthScreen({ onLogin, onRegister, authLoading, authError }) {
+export default function AuthScreen({ onLogin, onRegister, authLoading, authError, setAuthError, onClearError }) {
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
+
 
   return (
     <div className="wrapper bg-gray-100">
       <h1 className="absolute top-20 text-4xl font-bold text-black">
         OneShot.
       </h1>
-
-      {/* ERROR MESSAGE */}
-      {authError && (
-        <div className="absolute top-10 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50">
-          {authError}
-        </div>
-      )}
 
       <div className="card-switch">
         <label className="switch">
@@ -36,6 +32,8 @@ export default function AuthScreen({ onLogin, onRegister, authLoading, authError
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  required
+                  minLength={3}
                 />
                 <input
                   className="flip-card__input"
@@ -43,6 +41,8 @@ export default function AuthScreen({ onLogin, onRegister, authLoading, authError
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={8}
                 />
                 <button className="flip-card__btn">
                   {authLoading ? "..." : "Let's go!"}
@@ -61,6 +61,8 @@ export default function AuthScreen({ onLogin, onRegister, authLoading, authError
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  required
+                  minLength={3}
                 />
                 <input
                   className="flip-card__input"
@@ -68,6 +70,8 @@ export default function AuthScreen({ onLogin, onRegister, authLoading, authError
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={3}
                 />
                 <button className="flip-card__btn">
                   {authLoading ? "..." : "Confirm!"}
@@ -77,6 +81,14 @@ export default function AuthScreen({ onLogin, onRegister, authLoading, authError
           </div>
         </label>
       </div>
+
+      {/* ERROR MESSAGE */}
+      {authError &&
+        <Toast
+          message={authError}
+          onClose={onClearError} />
+      }
+
     </div>
   );
 }

@@ -43,7 +43,14 @@ function App() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.detail || "Failed to login");
+        // Checks if 'detail' is an Array (which means it's that FastAPI validation list)
+        // If yes, just grab the message from the first error.
+        // If no, assume it's a string.
+        const errorMessage = Array.isArray(data.detail)
+          ? data.detail[0].msg
+          : data.detail;
+
+        throw new Error(errorMessage || "Failed to login");
       }
 
       const data = await response.json();
@@ -72,6 +79,13 @@ function App() {
 
       if (!response.ok) {
         const data = await response.json();
+        // Checks if 'detail' is an Array (which means it's that FastAPI validation list)
+        // If yes, just grab the message from the first error.
+        // If no, assume it's a string.
+        const errorMessage = Array.isArray(data.detail)
+          ? data.detail[0].msg
+          : data.detail;
+
         throw new Error(data.detail || "Registration failed");
       }
 
@@ -174,6 +188,7 @@ function App() {
         onRegister={handleRegister}
         authLoading={authLoading}
         authError={authError}
+        onClearError={() => setAuthError(null)}
       />
     );
   }
