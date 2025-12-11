@@ -71,7 +71,7 @@ export default function AuthScreen({ onLogin, onRegister, authLoading, authError
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={3}
+                  minLength={8}
                 />
                 <button className="flip-card__btn">
                   {authLoading ? "..." : "Confirm!"}
