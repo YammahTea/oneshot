@@ -148,7 +148,7 @@ async def create_post(
   db.add(new_shot)
 
   # 5- Update user's last_post
-  user.last_post_at = datetime.now(timezone.utc)
+  user.last_post_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
   # 6- Save to db
   await db.commit()
@@ -256,7 +256,7 @@ async def like_shot(
   new_like = Like(user_id= user.id, shot_id = target_shot.id)
   db.add(new_like)
 
-  user.last_like_at = datetime.now(timezone.utc)
+  user.last_like_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
   await db.commit()
 
@@ -306,7 +306,7 @@ async def post_comment(
   )
   db.add(new_comment)
 
-  user.last_comment_at = datetime.now(timezone.utc)
+  user.last_comment_at = datetime.now(timezone.utc).replace(tzinfo=None)
   await db.commit()
 
   return {"status": "Commented!",

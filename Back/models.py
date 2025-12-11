@@ -35,7 +35,7 @@ class Shot(Base):
 
   # Shot image url, caption and creation date
   caption: Mapped[str] = mapped_column(String(50))
-  created_at: Mapped[datetime] = mapped_column(DateTime, default= lambda : datetime.now(timezone.utc))
+  created_at: Mapped[datetime] = mapped_column(DateTime, default= lambda : datetime.now(timezone.utc).replace(tzinfo=None))
   image_url: Mapped[str | None] = mapped_column(String, nullable=True)
 
   # User ID who owns the shot
