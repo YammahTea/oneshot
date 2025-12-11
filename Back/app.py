@@ -19,7 +19,7 @@ import jwt
 # Import modules
 from Back.models import User, Shot, Comment, Like
 from Back.handle import check_daily_limit
-from Back.database import create_db_and_tables, get_async_session
+from Back.database import create_db_and_tables, get_async_session, get_db
 from Back.storage import save_file
 from Back.auth import hash_password, verify_password, create_access_token, SECRET_KEY, ALGORITHM
 
@@ -46,7 +46,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 async def get_current_user(
   token: str = Depends(oauth2_scheme),
-  db: AsyncSession = Depends(get_async_session)
+  db: AsyncSession = Depends(get_db)
 ):
 
   credentials_exception = HTTPException(
@@ -94,7 +94,7 @@ async def create_post(
   caption: str = Form(...),
   image: UploadFile | None = File(default=None),
   user: User = Depends(get_current_user),
-  db: AsyncSession = Depends(get_async_session)
+  db: AsyncSession = Depends(get_db)
 ):
 
   """
@@ -161,7 +161,7 @@ async def create_post(
 
 """Home page for all the shots for everyone"""
 @app.get("/shots")
-async def shots(session: AsyncSession = Depends(get_async_session)):
+async def shots(session: AsyncSession = Depends(get_db)):
 
   """
   1-Grab 10 shots from the database by the created_at
@@ -218,7 +218,7 @@ async def shots(session: AsyncSession = Depends(get_async_session)):
 async def like_shot(
   shot_id: str,
   user: User = Depends(get_current_user),
-  db: AsyncSession = Depends(get_async_session)
+  db: AsyncSession = Depends(get_db)
 ):
 
   """
@@ -264,7 +264,7 @@ async def post_comment(
   shot_id: str,
   comment: CommentCreate,
   user: User = Depends(get_current_user),
-  db: AsyncSession = Depends(get_async_session)
+  db: AsyncSession = Depends(get_db)
 ):
 
   """
@@ -312,7 +312,7 @@ async def post_comment(
 @app.post("/auth/register")
 async def register(
   user_data: UserRegister,
-  db: AsyncSession = Depends(get_async_session)
+  db: AsyncSession = Depends(get_db)
 ):
   """
   1- Check if username exists
@@ -353,7 +353,7 @@ async def register(
 @app.post("/auth/login")
 async def login(
   form_data: OAuth2PasswordRequestForm = Depends(),
-  db: AsyncSession = Depends(get_async_session)
+  db: AsyncSession = Depends(get_db)
 ):
 
   """
