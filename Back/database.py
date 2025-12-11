@@ -1,20 +1,28 @@
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from Back.models import Base
-from typing import AsyncGenerator
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.orm import DeclarativeBase
+import os
+from dotenv import load_dotenv
 
 
-DATABASE_URL = "sqlite+aiosqlite:///./oneshot.db"
+load_dotenv()
 
-engine = create_async_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+DB_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./oneshot.db")
 
-async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
+if DB_URL.startswith("postgres://"):
+  DB_URL = DB_URL.replace("postgres://", "postgresql+asyncpg://", 1)
 
-# Helper function to create tables
+elif DB_URL.startswith("postgresql://") and "+asyncpg" not in DB_URL:
+  DB_URL = DB_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+print(f"Connecting to Database: {DB_URL.split('@')[-1]}") # prints the host
+
+
+engine = create_async_engine(DB_URL)
+get_async_session = async_sessionmaker(engine, expire_on_commit=False)
+
+class Base(DeclarativeBase):
+  pass
+
 async def create_db_and_tables():
   async with engine.begin() as conn:
     await conn.run_sync(Base.metadata.create_all)
-
-# Dependency: This gives a fresh DB session to every request
-async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
-  async with async_session_maker() as session:
-    yield session
