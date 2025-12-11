@@ -39,7 +39,6 @@ export default function ShotCard({ token, shot, currentUser, refreshFeed }) {
     setCommentError(null);
 
     try {
-      console.log("Before fetching");
       const response = await fetch(`http://127.0.0.1:8000/shot/${shot.id}/comment`, {
         method: 'POST',
         headers: {
@@ -49,9 +48,6 @@ export default function ShotCard({ token, shot, currentUser, refreshFeed }) {
         body: JSON.stringify({ content: commentText })
       });
 
-      console.log("After fetching");
-      console.log("Checking if fetch is ok");
-
       if (!response.ok) {
         const err = await response.json();
         setCommentError(err.detail);
@@ -60,11 +56,9 @@ export default function ShotCard({ token, shot, currentUser, refreshFeed }) {
         setIsCommenting(false);
         refreshFeed();
       }
-      console.log("After checking if fetch is ok");
 
 
     } catch (e) {
-      console.log("Inisde catch blokc");
       setCommentError(e.message);
     } finally {
       setLoading(false);
@@ -72,7 +66,7 @@ export default function ShotCard({ token, shot, currentUser, refreshFeed }) {
   }
 
   return (
-    <div className="bg-white p-4 rounded shadow border-l-4 border-blue-500 transition hover:shadow-md mb-4">
+    <div className="bg-white p-4 rounded shadow border-l-4 border-black-500 transition hover:shadow-md mb-4">
 
       {/* HEADER */}
       <div className="flex justify-between items-baseline mb-2">
