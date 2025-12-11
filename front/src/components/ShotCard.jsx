@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Heart, MessageCircle, Send } from 'lucide-react'
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function ShotCard({ token, shot, currentUser, refreshFeed }) {
   const [isCommenting, setIsCommenting] = useState(false)
   const [commentText, setCommentText] = useState("")
@@ -12,7 +14,7 @@ export default function ShotCard({ token, shot, currentUser, refreshFeed }) {
   const handleLike = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://127.0.0.1:8000/shot/${shot.id}/like`, {
+      const response = await fetch(`${API_URL}/shot/${shot.id}/like`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -39,7 +41,8 @@ export default function ShotCard({ token, shot, currentUser, refreshFeed }) {
     setCommentError(null);
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/shot/${shot.id}/comment`, {
+      const API_URL = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${API_URL}/shot/${shot.id}/comment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,7 +86,7 @@ export default function ShotCard({ token, shot, currentUser, refreshFeed }) {
             src={
               shot.image_url.startsWith("http")
                 ? shot.image_url  // It's a Cloud Link (R2) -> Use as is
-                : `http://127.0.0.1:8000${shot.image_url}` // It's Local -> Add localhost
+                : `${API_URL}${shot.image_url}` // It's Local -> Add localhost
             }
             alt="Shot visual"
             className="w-full h-auto object-cover max-h-96"

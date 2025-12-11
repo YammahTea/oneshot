@@ -2,6 +2,8 @@ import {useState, useEffect} from 'react'
 import ShotCard from './components/ShotCard'
 import AuthScreen from './components/AuthScreen'
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 function App() {
 
   // ----- APP STATE -----
@@ -36,7 +38,7 @@ function App() {
     formData.append('password', password);
 
     try{
-      const response = await fetch(`http://127.0.0.1:8000/auth/login`, {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         body: formData,
       });
@@ -71,7 +73,7 @@ function App() {
     setAuthError(null);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/auth/register', {
+      const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -118,7 +120,7 @@ function App() {
   // Function to fetch shots
   const fetchShots = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/shots', {
+      const response = await fetch(`${API_URL}/shots`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -145,7 +147,7 @@ function App() {
     }
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/post', {
+      const response = await fetch(`${API_URL}/post`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
