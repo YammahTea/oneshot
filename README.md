@@ -48,18 +48,23 @@ Built with a focus on clean architecture, hybrid cloud storage, and a responsive
 ## 📂 Project Structure
 ```text
 ├── Back/
-│   ├── models.py        # Database Schema (User, Shot, Comment, Like)
-│   ├── auth.py          # JWT Handler & Hashing
-│   ├── storage.py       # R2 Cloud Upload + Local Fallback logic
-│   ├── handle.py        # Daily Limit Logic
-│   ├── database.py      # Async Database Connection & Session
-│   └── app.py           # Main Application & API Endpoints
+│   ├── core/                # Core Configuration & Infrastructure
+│   │   ├── database.py      # Async Database Connection & Session
+│   │   ├── models.py        # Database Schema (User, Shot, Comment, Like)
+│   │   ├── redis_client.py  # Redis Connection Pool (Async)
+│   │   └── storage.py       # Cloudflare R2 Uploads + Local Fallback
+│   ├── services/            # Business Logic & Helpers
+│   │   ├── auth.py          # JWT Handler, Hashing & Verification
+│   │   ├── handle.py        # Daily Limit Business Logic
+│   │   └── rate_limiter.py  # Redis Rate Limiting Logic (Cooldowns)
+│   ├── uploads/             # Local storage fallback folder
+│   └── app.py               # Main Application, Dependency Injection & Routes
 ├── front/
-│   ├── src/components/  # ShotCard, AuthScreen, Toast
+│   ├── src/components/      # ShotCard, AuthScreen, Toast
 │   └── ...
-├── .env                 # Environment variables
-├── requirements.txt     # Python dependencies
-└── main.py              # Entry point
+├── .env                     # Environment variables
+├── requirements.txt         # Python dependencies
+└── main.py                  # Entry point
 
 ```
 

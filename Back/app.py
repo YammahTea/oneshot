@@ -1,6 +1,4 @@
-import shutil
-
-from fastapi import FastAPI, HTTPException, Depends, Header, Form, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, Form, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -17,11 +15,13 @@ import os
 import jwt
 
 # Import modules
-from Back.models import User, Shot, Comment, Like
-from Back.handle import check_daily_limit
-from Back.database import create_db_and_tables, get_async_session, get_db
-from Back.storage import save_file
-from Back.auth import hash_password, verify_password, create_access_token, SECRET_KEY, ALGORITHM
+from Back.core.models import User, Shot, Comment, Like
+from Back.core.database import create_db_and_tables, get_db
+from Back.core.storage import save_file
+from Back.core.redis_client import get_redis
+from Back.services.rate_limiter import check_user_cooldown
+from Back.services.handle import check_daily_limit
+from Back.services.auth import hash_password, verify_password, create_access_token, SECRET_KEY, ALGORITHM
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -99,7 +99,8 @@ async def create_post(
   caption: str = Form(...),
   image: UploadFile | None = File(default=None),
   user: User = Depends(get_current_user),
-  db: AsyncSession = Depends(get_db)
+  db: AsyncSession = Depends(get_db),
+  redis = Depends(get_redis)
 ):
 
   """
@@ -113,6 +114,10 @@ async def create_post(
   """
 
   # 2- Check Limits
+  # 2.1- With redis
+  await check_user_cooldown(user.id, redis)
+
+  # 2.2- With database
   can_post = check_daily_limit(user.last_post_at)
   if not can_post:
     raise HTTPException(status_code=429, detail="You have already made your post for the day.")
@@ -223,7 +228,8 @@ async def shots(session: AsyncSession = Depends(get_db)):
 async def like_shot(
   shot_id: str,
   user: User = Depends(get_current_user),
-  db: AsyncSession = Depends(get_db)
+  db: AsyncSession = Depends(get_db),
+  redis = Depends(get_redis)
 ):
 
   """
@@ -235,6 +241,10 @@ async def like_shot(
   """
 
   # 1- Check limits
+  # 1.1- With redis
+  await check_user_cooldown(user.id, redis)
+
+  # 1.2- With database
   can_like = check_daily_limit(user.last_like_at)
   if not can_like:
     raise HTTPException(status_code=429, detail="You already used your One Like for today.")
@@ -269,7 +279,8 @@ async def post_comment(
   shot_id: str,
   comment: CommentCreate,
   user: User = Depends(get_current_user),
-  db: AsyncSession = Depends(get_db)
+  db: AsyncSession = Depends(get_db),
+  redis = Depends(get_redis)
 ):
 
   """
@@ -281,6 +292,10 @@ async def post_comment(
   """
 
   # 1- Check limits
+  # 1.1- With redis
+  await check_user_cooldown(user.id, redis)
+
+  # 1.2- With database
   can_comment = check_daily_limit(user.last_comment_at)
   if not can_comment:
     raise HTTPException(status_code=429, detail="You already used your One Comment for today.")

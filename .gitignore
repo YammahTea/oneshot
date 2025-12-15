@@ -5,3 +5,4 @@ __pycache__/
 oneshot.db
 Back/uploads
 .env
+front/.env
