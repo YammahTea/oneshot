@@ -31,3 +31,25 @@ def create_access_token(data: dict):
 
   encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
   return encoded_jwt
+
+
+async def is_token_blacklisted(token: str, redis_client) -> bool:
+  """Returns True if the token is found in the Redis blacklist."""
+  return await redis_client.exists(f"blacklist:token:{token}")
+
+
+async def add_token_to_blacklist(token: str, expiration_timestamp: float, redis_client):
+  """
+  Calculates remaining time and adds token to Redis blacklist.
+  """
+
+  current_time = datetime.now(timezone.utc).timestamp()
+  time_left = int(expiration_timestamp - current_time)
+
+  if time_left > 0:
+    # Key: "blacklist:token:{token}"
+    await redis_client.setex(
+      name=f"blacklist:token:{token}",
+      time=time_left,
+      value="blacklisted"
+    )

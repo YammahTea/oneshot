@@ -110,11 +110,36 @@ function App() {
   }
 
   // Function for LOGOUT
-  const handleLogout = () => {
+  const handleLogout = async () => {
+
+    // 1- Get token before deleting it
+    const token = localStorage.getItem('oneshot_token');
+
+    // 2- Kill the token in the server side
+    if (token) {
+      try {
+        await fetch(`${API_URL}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          }
+        });
+
+      } catch (error) {
+        console.error("Logout warning:", error);
+      }
+    }
+
+    // 3- Delete the token client side
     localStorage.removeItem('oneshot_token');
     localStorage.removeItem('oneshot_username');
-    setCurrentUser(null); setToken(null);
+    setCurrentUser(null);
+    setToken(null);
+
+    // 4- Redirect the user
     window.location.reload();
+
   }
 
   // Function to fetch shots
@@ -281,10 +306,7 @@ function App() {
         </div>
 
         <button
-          onClick={() => {
-            localStorage.removeItem("oneshot_username");
-            window.location.reload();
-          }}
+          onClick={handleLogout}
           className="text-xs text-red-500 underline mt-1 cursor-pointer hover:text-red-700"
         >
           Logout

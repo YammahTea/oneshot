@@ -21,7 +21,7 @@ from Back.core.storage import save_file
 from Back.core.redis_client import get_redis
 from Back.services.rate_limiter import check_user_cooldown
 from Back.services.handle import check_daily_limit
-from Back.services.auth import hash_password, verify_password, create_access_token, SECRET_KEY, ALGORITHM
+from Back.services.auth import hash_password, verify_password, create_access_token, SECRET_KEY, ALGORITHM, is_token_blacklisted, add_token_to_blacklist
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -51,7 +51,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 async def get_current_user(
   token: str = Depends(oauth2_scheme),
-  db: AsyncSession = Depends(get_db)
+  db: AsyncSession = Depends(get_db),
+  redis = Depends(get_redis)
 ):
 
   credentials_exception = HTTPException(
@@ -60,8 +61,13 @@ async def get_current_user(
     headers={"WWW-Authenticate": "Bearer"},
   )
 
+  # 1- Check Blacklist
+  # If the token is in the trash, reject it immediately.
+  if await is_token_blacklisted(token, redis):
+    raise HTTPException(status_code=401, detail="Token is invalid (Logged out)")
+
   try:
-    # 1- Decode the Token
+    # 2- Decode the Token
     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     username: str = payload.get("sub")
 
@@ -71,7 +77,7 @@ async def get_current_user(
   except jwt.PyJWTError:
     raise credentials_exception
 
-  # 2- Find User in DB
+  # 3- Find User in DB
   result = await db.execute(select(User).where(User.username == username))
   user = result.scalars().first()
 
@@ -398,3 +404,25 @@ async def login(
   access_token = create_access_token(data={"sub": user.username})
 
   return {"access_token": access_token, "token_type": "bearer", "username": user.username}
+
+@app.post("auth/logout")
+async def logout(
+  token: str = Depends(oauth2_scheme),
+  redis = Depends(get_redis)
+):
+  """
+  Receives the token from the frontend and adds it to the Redis Blacklist.
+  """
+
+  try:
+    # 1- Decode just to find out when this token was supposed to expire
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    expiration = payload.get("exp")
+
+    # 2- Blacklist the token
+    await add_token_to_blacklist(token, expiration, redis)
+
+  except jwt.PyJWTError:
+    pass
+
+  return {"message": "Successfully logged out"}
