@@ -68,18 +68,14 @@
 }
 
 /* --- AUTH CARD  --- */
-.wrapper {
+.auth-wrapper {
   --input-focus: #2d8cf0;
   --font-color: #323232;
   --font-color-sub: #666;
   --bg-color: #fff;
   --bg-color-alt: #666;
   --main-color: #323232;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
+
 }
 
 .switch {

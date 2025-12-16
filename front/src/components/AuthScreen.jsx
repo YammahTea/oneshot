@@ -9,8 +9,8 @@ export default function AuthScreen({ onLogin, onRegister, authLoading, authError
 
 
   return (
-    <div className="wrapper bg-gray-100">
-      <h1 className="absolute top-20 text-4xl font-bold text-black">
+    <div className="auth-wrapper bg-gray-100">
+      <h1 className="absolute top-20 left-1/2 -translate-x-1/2 font-bold text-4xl text-black">
         OneShot.
       </h1>
 
