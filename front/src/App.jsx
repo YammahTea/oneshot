@@ -12,6 +12,7 @@ function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cooldownTimer, setCooldownTimer] = useState(0);
 
   // ----- AUTH STATE -----
   const [authLoading, setAuthLoading] = useState(false);
@@ -26,6 +27,20 @@ function App() {
   useEffect(() => {
     if (currentUser || token) {fetchShots()}
   }, [currentUser, token]);
+
+  // Function for handling cooldown timers
+  useEffect(() => {
+
+    if (cooldownTimer > 0) {
+      const timerId = setTimeout(() => {
+        setCooldownTimer(cooldownTimer - 1);
+      }, 1000)
+
+      return () => {clearTimeout(timerId);}
+    }
+
+  }, [cooldownTimer])
+
 
   // Function for login
   const handleLogin = async (e, username, password) => {
@@ -179,14 +194,33 @@ function App() {
       });
 
       if (!response.ok) {
-        throw new Error("You have already made your Shot silly!");
-      }
+        const data = await response.json();
+        // Default to whatever the server sends
+        let errorMessage = data.detail || "Failed to post";
 
+        if (response.status === 429) {
+          errorMessage = "You have already made your Shot silly!";
+        }
+
+        const error = new Error(errorMessage);
+        error.status = response.status;
+        throw error;
+      }
+      // Clear input field and upload field
       setInput(""); setSelectedFile(null);
+
+      // TIMER FOR SPAM PROTECTION
+      setCooldownTimer(5);
+
       await fetchShots();
 
     } catch (err) {
+      // Prevent the user from spamming the button if an error occurred
+      if (err.status === 429 || err.message.includes("Wait")) {
+        setCooldownTimer(5);
+      }
       setError(err.message);
+
     } finally {
       setIsSubmitting(false);
     }
@@ -252,14 +286,14 @@ function App() {
         <button
           onClick={handlePost}
           className="w-full text-center cursor-pointer bg-customGrey hover:bg-black transition-colors duration-500 shadow-[0px_4px_32px_0_rgba(99,102,241,.70)] px-6 py-3 rounded-xl border-[1px] border-slate-500 text-white font-medium group disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
-          disabled={!input || isSubmitting}
+          disabled={!input || isSubmitting || cooldownTimer > 0}
         >
           <div className="relative overflow-hidden">
             <p className="text-center group-hover:-translate-y-7 duration-[1.125s] ease-[cubic-bezier(0.19,1,0.22,1)]">
-              {isSubmitting ? "Sending..." : "Ready?"}
+              {isSubmitting ? "Sending..." : cooldownTimer > 0 ? `Wait ${cooldownTimer}s` : "Ready?"}
             </p>
             <p className="w-full text-center absolute top-7 left-0 group-hover:top-0 duration-[1.125s] ease-[cubic-bezier(0.19,1,0.22,1)]">
-              {isSubmitting ? "Sending..." : "Shot!"}
+              {isSubmitting ? "Sending..." : cooldownTimer > 0 ? `Wait ${cooldownTimer}s` : "Shot!"}
             </p>
           </div>
         </button>
