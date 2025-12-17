@@ -3,7 +3,11 @@ import { Heart, MessageCircle, Send } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export default function ShotCard({ token, shot, currentUser, refreshFeed }) {
+export default function ShotCard({ token, shot, currentUser }) {
+
+  const [currentLikes, setCurrentLikes] = useState(shot.like_count);
+  const [currentComments, setCurrentComments] = useState(shot.comments);
+
   const [isCommenting, setIsCommenting] = useState(false)
   const [commentText, setCommentText] = useState("")
   const [commentError, setCommentError] = useState(null)
@@ -12,7 +16,9 @@ export default function ShotCard({ token, shot, currentUser, refreshFeed }) {
 
   // function to handle like
   const handleLike = async () => {
+    if (loading) return; // Prevent spamming
     setLoading(true);
+
     try {
       const response = await fetch(`${API_URL}/shot/${shot.id}/like`, {
         method: 'POST',
@@ -23,7 +29,8 @@ export default function ShotCard({ token, shot, currentUser, refreshFeed }) {
         const err = await response.json();
         alert(err.detail);
       } else {
-        refreshFeed();
+        // Update the number of likes locally
+        setCurrentLikes(prev => prev + 1);
       }
 
 
@@ -55,9 +62,16 @@ export default function ShotCard({ token, shot, currentUser, refreshFeed }) {
         const err = await response.json();
         setCommentError(err.detail);
       } else {
+        // Add the comment to the list locally
+        const newComment = {
+          id: Date.now(), // Temporary ID
+          owner: currentUser,
+          content: commentText
+        };
+
+        setCurrentComments(prev => [...prev, newComment]);
         setCommentText("");
         setIsCommenting(false);
-        refreshFeed();
       }
 
 
@@ -106,8 +120,8 @@ export default function ShotCard({ token, shot, currentUser, refreshFeed }) {
           disabled={loading}
           className="flex items-center gap-1 hover:text-red-500 transition disabled:opacity-50"
         >
-          <Heart size={20} />
-          <span className="text-sm font-bold">{shot.like_count}</span>
+          <Heart size={20} fill={currentLikes > shot.like_count ? "red" : "none"} color={currentLikes > shot.like_count ? "red" : "currentColor"} />
+          <span className="text-sm font-bold">{currentLikes}</span>
         </button>
 
         {/* Comment Toggle */}
@@ -116,15 +130,15 @@ export default function ShotCard({ token, shot, currentUser, refreshFeed }) {
           className="flex items-center gap-1 hover:text-blue-500 transition"
         >
           <MessageCircle size={20} />
-          <span className="text-sm font-bold">{shot.comments.length}</span>
+          <span className="text-sm font-bold">{currentComments.length}</span>
         </button>
       </div>
 
       {/* COMMENTS SECTION */}
       <div className="mt-3 bg-gray-50 rounded p-2 text-sm">
         {/* List existing comments */}
-        {shot.comments.map(c => (
-          <div key={c.id} className="mb-1">
+        {currentComments.map((c, index) => (
+          <div key={c.id || index} className="mb-1">
             <span className="font-bold text-gray-700 mr-2">@{c.owner}:</span>
             <span className="text-gray-600 break-words w-full">{c.content}</span>
           </div>

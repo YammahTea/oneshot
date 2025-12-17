@@ -177,7 +177,10 @@ async def create_post(
 
 """Home page for all the shots for everyone"""
 @app.get("/shots")
-async def shots(session: AsyncSession = Depends(get_db)):
+async def shots(
+  page: int = 1, # default one page
+  limit: int = 10, # 10 items per page
+  session: AsyncSession = Depends(get_db)):
 
   """
   1-Grab 10 shots from the database by the created_at
@@ -185,8 +188,13 @@ async def shots(session: AsyncSession = Depends(get_db)):
   3-Load shots data in as a JSON in an array
   """
 
-  # 1-Grab 10 shots
-  # 2-Join User db to the shots
+  # 1- Calculate how many items to skip
+  # page 1 -> skip 0 || page 2 -> skip 10 || page 3 -> skip 20 || etc...
+  offset = (page - 1) * limit
+
+
+  # 2-Grab 10 shots
+  # 3-Join User db to the shots
   query = (
         select(Shot)
         .options(
@@ -194,13 +202,14 @@ async def shots(session: AsyncSession = Depends(get_db)):
             joinedload(Shot.likes), # Load Likes
             selectinload(Shot.comments).joinedload(Comment.owner)) # Load Comments AND the User who wrote each comment
         .order_by(Shot.created_at.desc())
-        .limit(10)
+        .offset(offset)
+        .limit(limit)
     )
 
   result = await session.execute(query)
   shots_list = result.scalars().unique().all()
 
-  #Load shots data as a JSON in an array
+  # Load shots data as a JSON in an array
   shots_data = []
 
   for shot in shots_list:
