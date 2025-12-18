@@ -50,6 +50,10 @@ const Feed = ({ token, currentUser }) => {
     fetchShots(nextPage);
   };
 
+  const removeShotFromFeed = (deletedShotId) => {
+    setShots((prevShots) => prevShots.filter(shot => shot.id !== deletedShotId));
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10 pb-24">
@@ -64,6 +68,7 @@ const Feed = ({ token, currentUser }) => {
             key={shot.id}
             shot={shot}
             currentUser={currentUser}
+            onDelete={() => removeShotFromFeed(shot.id)}
           />
         ))}
 

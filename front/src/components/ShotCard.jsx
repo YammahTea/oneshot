@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Heart, MessageCircle, Send } from 'lucide-react'
+import { Heart, MessageCircle, Send, Trash2 } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export default function ShotCard({ token, shot, currentUser }) {
+export default function ShotCard({ token, shot, currentUser, onDelete }) {
 
   const [currentLikes, setCurrentLikes] = useState(shot.like_count);
   const [currentComments, setCurrentComments] = useState(shot.comments);
@@ -81,6 +81,32 @@ export default function ShotCard({ token, shot, currentUser }) {
       setLoading(false);
     }
   }
+  // Function to delete shot
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete this shot?")) return;
+
+    try {
+      const response = await fetch(`${API_URL}/shot/${shot.id}/delete`, {
+        method: 'DELETE',
+        headers: {'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        // This removes it from the UI immediately
+        if (onDelete) onDelete();
+
+      } else {
+        const err = await response.json();
+        alert(err.detail || "Failed to delete the shot");
+      }
+
+    } catch (e) {
+      console.error(e);
+      alert("Network Error: " + e.message);
+    }
+  }
+
+  const isOwner = shot.owner === currentUser;
 
   return (
     <div className="bg-white p-4 rounded shadow border-l-4 border-black-500 transition hover:shadow-md mb-4">
@@ -88,9 +114,24 @@ export default function ShotCard({ token, shot, currentUser }) {
       {/* HEADER */}
       <div className="flex justify-between items-baseline mb-2">
         <p className="font-bold text-gray-700">@{shot.owner}</p>
-        <p className="text-xs text-gray-400">
-          {new Date(shot.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </p>
+
+        {/* THE TRASH ICON  */}
+        {/* Only render if isOwner is true */}
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-gray-400">
+            {new Date(shot.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </p>
+
+          {isOwner && (
+            <button
+              onClick={handleDelete}
+              className="text-gray-400 hover:text-red-600 transition p-1"
+              title="Delete Shot"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* --- IMAGE DISPLAY --- */}

@@ -250,9 +250,10 @@ async def like_shot(
   """
   1- Check limits (if user already liked today)
   2- Check if Shot exists
-  3- Update "Like" db
-  4- Update last_like_at for the user
-  5- Return status and number of likes left for the user
+  3- Check if shot is already liked by the current user
+  4- Update "Like" db
+  5- Update last_like_at for the user
+  6- Return status and number of likes left for the user
   """
 
   # 1- Check limits
@@ -277,7 +278,23 @@ async def like_shot(
   if not target_shot:
     raise HTTPException(status_code=404, detail="This Shot doesn't even exist...")
 
-  # 3- Create like + add like to db and updated last act
+  # 3- Check if already liked
+  # We look for a Like entry that matches BOTH this user AND this shot
+  result = await db.execute(
+    select(Like).where(
+      Like.user_id == user.id,
+      Like.shot_id == target_shot.id
+    )
+  )
+  existing_like = result.scalars().first()
+
+  if existing_like:
+    # Raise an error (Prevent duplicates)
+    raise HTTPException(status_code=400, detail="You already liked this shot! Are you trying to support it that much?")
+
+  """ TO DO: ADD OPTION TO UNLIKE """
+
+  # 4- Create like + add like to db and updated last act
   new_like = Like(user_id= user.id, shot_id = target_shot.id)
   db.add(new_like)
 
@@ -435,3 +452,87 @@ async def logout(
     pass
 
   return {"message": "Successfully logged out"}
+
+
+""" Endpoint to fetch current user shots """
+@app.get("/myshots")
+async def get_my_shots(
+  user: User = Depends(get_current_user),
+  session: AsyncSession = Depends(get_db)
+):
+  """
+  Fetch ONLY the shots belonging to the currently logged in user.
+  """
+  query = (
+    select(Shot)
+    .options(
+      joinedload(Shot.owner),
+      joinedload(Shot.likes),
+      selectinload(Shot.comments).joinedload(Comment.owner)
+    )
+    .where(Shot.user_id == user.id)
+    .order_by(Shot.created_at.desc())
+  )
+
+  result = await session.execute(query)
+  user_shots_list = result.scalars().unique().all()
+
+  shots_data = []
+
+  for shot in user_shots_list:
+    shots_data.append({
+      "id": str(shot.id),
+      "caption": shot.caption,
+      "created_at": shot.created_at.isoformat(),
+
+      "owner": shot.owner.username,
+      "owner_id": str(shot.owner.id),
+
+      "like_count": len(shot.likes),
+
+      # Array of comments
+      "comments": [
+        {
+          "id": str(c.id),
+          "owner": c.owner.username,
+          "content": c.content
+        }
+        for c in shot.comments
+      ],
+
+      "image_url": shot.image_url
+    })
+
+  return shots_data
+
+
+@app.delete("/shot/{shot_id}/delete")
+async def delete_shot(
+  shot_id: str,
+  user: User = Depends(get_current_user),
+  session: AsyncSession = Depends(get_db)
+):
+
+  # 1- Convert string to UUID
+  try:
+    shot_uuid = uuid.UUID(shot_id)
+  except ValueError:
+    raise HTTPException(status_code=400, detail="Invalid Shot ID format")
+
+  # 2- Find shot
+  result = await session.execute(select(Shot).where(Shot.id == shot_uuid))
+  shot_to_delete = result.scalars().first()
+
+  # 3- Check if shot exists
+  if not shot_to_delete:
+    raise HTTPException(status_code=404, detail="Shot doesn't exist")
+
+  # 4- Check if the shot belongs to the user
+  if shot_to_delete.user_id != user.id:
+    raise HTTPException(status_code=403, detail="Not authorized to delete this shot")
+
+  # 5- Delete the shot
+  await session.delete(shot_to_delete)
+  await session.commit()
+
+  return {"message": "Shot has been deleted successfully"}

@@ -43,8 +43,10 @@ class Shot(Base):
 
   # Relationship with User + Comment + Like
   owner = relationship("User", back_populates="shots")
-  comments = relationship("Comment", back_populates="shot")
-  likes = relationship("Like", back_populates="shot")
+
+  # For Cascade Delete
+  comments = relationship("Comment", back_populates="shot", cascade="all, delete-orphan")
+  likes = relationship("Like", back_populates="shot", cascade="all, delete-orphan")
 
 class Comment(Base):
   __tablename__ = "comments"

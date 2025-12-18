@@ -133,7 +133,11 @@ function App() {
       <Routes>
         <Route path="/" element={<Feed token={token} currentUser={currentUser} />} />
         <Route path="/upload" element={<Upload token={token} currentUser={currentUser} />} />
-        <Route path="/profile" element={<Profile currentUser={currentUser} onLogout={handleLogout} />} />
+        <Route path="/profile" element={<Profile
+            currentUser={currentUser}
+            onLogout={handleLogout}
+            token={token}/>}
+        />
 
         {/* Redirect unknown URLs to feed */}
         <Route path="*" element={<Navigate to="/" replace />} />
