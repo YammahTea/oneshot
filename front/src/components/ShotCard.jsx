@@ -125,7 +125,7 @@ export default function ShotCard({ token, shot, currentUser, onDelete }) {
           {isOwner && (
             <button
               onClick={handleDelete}
-              className="text-gray-400 hover:text-red-600 transition p-1"
+              className="text-gray-400 hover:text-red-600 transition p-1 cursor-pointer"
               title="Delete Shot"
             >
               <Trash2 size={16} />
@@ -159,7 +159,7 @@ export default function ShotCard({ token, shot, currentUser, onDelete }) {
         <button
           onClick={handleLike}
           disabled={loading}
-          className="flex items-center gap-1 hover:text-red-500 transition disabled:opacity-50"
+          className="flex items-center gap-1 hover:text-red-500 transition disabled:opacity-50 cursor-pointer"
         >
           <Heart size={20} fill={currentLikes > shot.like_count ? "red" : "none"} color={currentLikes > shot.like_count ? "red" : "currentColor"} />
           <span className="text-sm font-bold">{currentLikes}</span>
@@ -168,7 +168,7 @@ export default function ShotCard({ token, shot, currentUser, onDelete }) {
         {/* Comment Toggle */}
         <button
           onClick={() => setIsCommenting(!isCommenting)}
-          className="flex items-center gap-1 hover:text-blue-500 transition"
+          className="flex items-center gap-1 hover:text-blue-500 transition cursor-pointer"
         >
           <MessageCircle size={20} />
           <span className="text-sm font-bold">{currentComments.length}</span>
@@ -198,7 +198,7 @@ export default function ShotCard({ token, shot, currentUser, onDelete }) {
             <button
               onClick={handleComment}
               disabled={loading}
-              className="bg-black text-white p-1 rounded hover:opacity-80"
+              className="bg-black text-white p-1 rounded hover:opacity-80 cursor-pointer"
             >
               <Send size={16} />
             </button>
