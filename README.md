@@ -48,26 +48,34 @@ Built with a focus on clean architecture, hybrid cloud storage, and a responsive
 ## 📂 Project Structure
 ```text
 ├── Back/
-│   ├── core/                # Core Configuration & Infrastructure
-│   │   ├── database.py      # Async Database Connection & Session
-│   │   ├── models.py        # Database Schema (User, Shot, Comment, Like)
-│   │   ├── redis_client.py  # Redis Connection Pool (Async)
-│   │   └── storage.py       # Cloudflare R2 Uploads + Local Fallback
-│   ├── services/            # Business Logic & Helpers
-│   │   ├── auth.py          # JWT Handler, Hashing & Verification
-│   │   ├── handle.py        # Daily Limit Business Logic
-│   │   └── rate_limiter.py  # Redis Rate Limiting Logic (Cooldowns)
-│   ├── uploads/             # Local storage fallback folder
-│   └── app.py               # Main Application, Dependency Injection & Routes
+│   ├── core/                # Core Configuration
+│   │   ├── database.py      # Async Database & Session
+│   │   ├── models.py        # DB Schema
+│   │   ├── redis_client.py  # Connection Pool
+│   │   └── storage.py       # Hybrid Storage (R2 + Local Fallback)
+│   ├── services/            # Business Logic
+│   │   ├── auth.py          # JWT Handling & Hashing
+│   │   ├── handle.py        # Daily Limit Logic
+│   │   └── rate_limiter.py  # Redis Cooldowns
+│   ├── uploads/             # Local storage fallback
+│   └── app.py               # Main API Routes
 ├── front/
-│   ├── src/components/      # ShotCard, AuthScreen, Toast
+│   ├── src/
+│   │   ├── components/      # Reusable UI
+│   │   │   ├── ShotCard.jsx    # The core card
+│   │   │   ├── FloatingMenu.jsx # Navigation
+│   │   │   ├── AuthScreen.jsx   # Login/Register Flip Card
+│   │   │   └── Toast.jsx        # Notifications
+│   │   ├── pages/           # Application Views
+│   │   │   ├── Feed.jsx        # Infinite Scroll Home
+│   │   │   ├── Upload.jsx      # Post Creation
+│   │   │   └── Profile.jsx     # User History & Management
+│   │   ├── App.jsx          # Router & Auth State
+│   │   └── index.css
 │   └── ...
 ├── .env                     # Environment variables
-├── requirements.txt         # Python dependencies
-└── main.py                  # Entry point
-
+└── requirements.txt         # Python dependencies
 ```
-
 
 ## ⚡ Installation & Setup
 
