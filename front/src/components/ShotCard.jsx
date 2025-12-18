@@ -19,6 +19,9 @@ export default function ShotCard({ token, shot, currentUser, onDelete }) {
     if (loading) return; // Prevent spamming
     setLoading(true);
 
+    // update the screen IMMEDIATELY, before asking the server.
+    setCurrentLikes(prev => prev + 1)
+
     try {
       const response = await fetch(`${API_URL}/shot/${shot.id}/like`, {
         method: 'POST',
@@ -26,16 +29,22 @@ export default function ShotCard({ token, shot, currentUser, onDelete }) {
       });
 
       if (!response.ok) {
+        // ROLLBACK (Server Error)
+        // in case of request failure
+        // subtract the like back
+        setCurrentLikes(prev => prev - 1);
+
         const err = await response.json();
         alert(err.detail);
-      } else {
-        // Update the number of likes locally
-        setCurrentLikes(prev => prev + 1);
       }
 
-
     } catch (e) {
+      // ROLLBACK (Network Error)
+      // Subtract the like back
+      setCurrentLikes(prev => prev - 1);
       console.error(e);
+      alert("Network Error: Could not like shot.");
+
     } finally {
       setLoading(false);
     }
