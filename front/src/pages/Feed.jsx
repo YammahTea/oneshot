@@ -1,5 +1,6 @@
 import React, { useState, useEffect} from 'react';
 import ShotCard from "../components/ShotCard.jsx";
+import SkeletonShot from "../components/SkeletonShot.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -62,6 +63,14 @@ const Feed = ({ token, currentUser }) => {
       </div>
 
       <div className="w-full max-w-md space-y-4 px-4">
+
+        {isLoading && shots.length === 0 && (
+          <>
+            <SkeletonShot />
+            <SkeletonShot />
+          </>
+        )}
+
         {shots.map((shot) => (
           <ShotCard
             token={token}

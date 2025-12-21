@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ShotCard from "../components/ShotCard.jsx";
+import SkeletonShot from "../components/SkeletonShot.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -41,7 +42,6 @@ const Profile = ({ currentUser, onLogout, token }) => {
   };
 
 
-
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10 pb-24">
 
@@ -64,7 +64,12 @@ const Profile = ({ currentUser, onLogout, token }) => {
       <div className="w-full max-w-md space-y-4 px-4">
 
         {loading ? (
-          <p className="text-center text-gray-400 mt-10">Loading your history...</p>
+
+          // show 2 Skeletons while fetching
+          <>
+            <SkeletonShot />
+            <SkeletonShot />
+          </>
         ) : myShots.length === 0 ? (
           <div className="text-center mt-10">
             <p className="text-gray-400 mb-4">You haven't posted anything yet.</p>
