@@ -18,6 +18,7 @@ Built with a focus on clean architecture, hybrid cloud storage, and a responsive
 
 ![React](https://img.shields.io/badge/React-18-cyan)
 
+![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
 
 ## 🚀 Features
 
@@ -42,8 +43,9 @@ Built with a focus on clean architecture, hybrid cloud storage, and a responsive
 
 * **Storage:** Cloudflare R2 (AWS S3 Compatible SDK)
 
-* **Deployment:** Render (PostgreSQL + Web Service)
+* **Infrastructure:** Docker, Docker Compose, PostgreSQL (Containerized), Redis (Containerized)
 
+* **Deployment:** Render (PostgreSQL + Web Service)
 
 ## 📂 Project Structure
 ```text
@@ -79,25 +81,68 @@ Built with a focus on clean architecture, hybrid cloud storage, and a responsive
 
 ## ⚡ Installation & Setup
 
-### Prerequisites
-* Python **3.14**
-* Node.js & npm
-
 ### 1. Clone the Repository
 
 ```bash
-git clone <https://github.com/YammahTea/oneshot>
+git clone https://github.com/YammahTea/oneshot
 cd oneshot
 ```
 
-### 2. Backend Setup
+### Option A: 🐳 Docker Quick Start (Recommended)
+
+Skip the manual installation and run the entire stack (Frontend, Backend, Database, Redis) with one command.
+
+#### Prerequisites
+* **Docker Desktop** installed and running.
+
+#### 1. Configuration
+Create a .env file in the root directory. You can use the values below (Postgres/Redis are handled automatically):
+```text
+# Authentication
+AUTH_SECRET_KEY="random_secret_string"
+AUTH_ALGORITHM="HS256"
+AUTH_ACCESS_TOKEN_EXPIRE_MINUTES=1440
+
+# R2 Storage (Optional - Leave empty for local storage)
+R2_ACCOUNT_ID=""
+R2_ACCESS_KEY_ID=""
+R2_SECRET_ACCESS_KEY=""
+R2_BUCKET_NAME=""
+R2_PUBLIC_URL=""
+```
+
+
+#### 2. Run the App
+* **For Production Experience (Pre-built Images):**
+```bash
+docker compose -f docker-compose.prod.yml up
+```
+
+* **For Development (Local Build):**
+```bash
+docker compose up --build
+```
+
+#### 3. Access
+| Service | URL |
+| :--- | :--- |
+| **Frontend** | [http://localhost:5173](http://localhost:5173) |
+| **Backend Docs** | [http://localhost:8000/docs](http://localhost:8000/docs) |
+
+
+### 🛠️ Option B: Manual Installation
+
+#### Prerequisites
+* Python **3.14**
+* Node.js & npm
+
+#### 1. Backend Setup
 Create a virtual environment and install dependencies.
 
 ```bash
-# Create virtual env
+# Create and activate virtual env
 python -m venv .venv
 
-# Activate it
 # Windows:
 .venv\Scripts\activate
 # Mac/Linux:
@@ -105,10 +150,12 @@ source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
+# OR if using UV
+uv sync
 ```
 
-#### Configuration (.env)
-Create a .env file in the root directory. You must add these keys for the app to function:
+#### 2. Backend Configuration (.env)
+Create a .env in the root with your secrets. You must also include the Database URL:
 ```text
 # Database (Defaults to local SQLite if not set to Postgres)
 DATABASE_URL="sqlite+aiosqlite:///./oneshot.db"
@@ -124,26 +171,29 @@ R2_ACCESS_KEY_ID=""
 R2_SECRET_ACCESS_KEY=""
 R2_BUCKET_NAME=""
 R2_PUBLIC_URL=""
+
+# Redis url
+REDIS_URL=""
 ```
-#### Run the backend server
+#### 3. Run the backend server
 ```bash
 uvicorn Back.app:app --reload
 ```
 
-### 3. Frontend Setup
+#### 4. Frontend Setup
 #### Open a new terminal and navigate to the front folder.
 ```bash
 cd front
 npm install
 ```
 
-#### Configuration (.env)
-Create a .env file in the front/ directory:
+#### 5. Frontend Configuration (.env)
+Create a .env file in the `front/` directory:
 ```text
 VITE_API_URL="http://localhost:8000"
 ```
 
-#### Run the frontend development server:
+#### 6. Run Frontend
 ```bash
 npm run dev
 ```
