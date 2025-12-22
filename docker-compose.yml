@@ -1,0 +1,51 @@
+services:
+  # service 1: backend
+  backend:
+    build:
+      context: . #root folder context
+      dockerfile: Back/Dockerfile
+
+    container_name: oneshot-backend
+    ports:
+      - "8000:8000" # pc port -> container port
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://oneshot_user:oneshot_password@db:5432/oneshot_db
+      - REDIS_URL=redis://redis:6379/0
+
+  # service 2: frontend
+  frontend:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+
+    container_name: oneshot-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  # service 3: postgres db
+  db:
+    image: postgres:15-alpine
+    container_name: oneshot_db
+    restart: always
+    environment:
+      - POSTGRES_USER=oneshot_user
+      - POSTGRES_PASSWORD=oneshot_password
+      - POSTGRES_DB=oneshot_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+
+  # service 4: redis
+  redis:
+    image: redis:alpine
+    restart: always
+
+volumes:
+  postgres_data:

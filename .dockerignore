@@ -1,0 +1,15 @@
+front/
+
+.env
+.env.*
+
+__pycache__
+*.pyc
+.venv
+.venv/
+.git
+.idea/
+
+Back/tests/
+Back/uploads/
+oneshot.db

@@ -1,0 +1,41 @@
+services:
+  backend:
+    image: threshact/oneshot-backend:latest
+    container_name: oneshot-backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env  # don't forget to make ur own keys
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://oneshot_user:oneshot_password@db:5432/oneshot_db
+      - REDIS_URL=redis://redis:6379/0
+
+  frontend:
+    image: threshact/oneshot-frontend:latest
+    container_name: oneshot-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  db:
+    image: postgres:15-alpine
+    container_name: oneshot-db
+    restart: always
+    environment:
+      - POSTGRES_USER=oneshot_user
+      - POSTGRES_PASSWORD=oneshot_password
+      - POSTGRES_DB=oneshot_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:alpine
+    container_name: oneshot-redis
+    restart: always
+
+volumes:
+  postgres_data:
