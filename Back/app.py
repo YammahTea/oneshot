@@ -457,21 +457,27 @@ async def logout(
 """ Endpoint to fetch current user shots """
 @app.get("/myshots")
 async def get_my_shots(
+  page: int = 1, # default one page
+  limit: int = 10, # 10 items per page
   user: User = Depends(get_current_user),
   session: AsyncSession = Depends(get_db)
 ):
   """
   Fetch ONLY the shots belonging to the currently logged in user.
+  10 shots per load
   """
+  offset = (page -1) * limit
+
   query = (
     select(Shot)
     .options(
       joinedload(Shot.owner),
       joinedload(Shot.likes),
-      selectinload(Shot.comments).joinedload(Comment.owner)
-    )
+      selectinload(Shot.comments).joinedload(Comment.owner)) # Load Comments AND the User who wrote each comment
     .where(Shot.user_id == user.id)
     .order_by(Shot.created_at.desc())
+    .offset(offset)
+    .limit(limit)
   )
 
   result = await session.execute(query)

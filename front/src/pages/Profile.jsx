@@ -6,41 +6,68 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 const Profile = ({ currentUser, onLogout, token }) => {
 
+  // --- STATE MANAGEMENT ---
   const [myShots, setMyShots] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
+  // Split loading
+  const [loadingInitial, setLoadingInitial] = useState(true); // Big Skeletons
+  const [loadingMore, setLoadingMore] = useState(false);      // Small spinner on button
 
   // Fetch "My Shots" when the component loads
-  useEffect(() => {
-    const fetchMyShots = async () => {
-      try {
-        const response = await fetch(`${API_URL}/myshots`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+  const fetchMyShots = async (pageNum) => {
 
-        if (response.ok) {
-          const data = await response.json();
-          setMyShots(data);
+    if (loadingMore) return;
+
+    // Decide which loader to show
+    if (pageNum === 1) setLoadingInitial(true); // skeleton
+    else setLoadingMore(true);
+
+    try {
+      const response = await fetch(`${API_URL}/myshots?page=${pageNum}&limit=10`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const newShots = await response.json();
+
+        if (newShots.length === 0) {
+          setHasMore(false); // Stop the button from showing
         } else {
-          console.error("Failed to fetch profile shots");
+          // If Page 1 -> Overwrite. If Page 2+ -> Append.
+          setMyShots(prev => pageNum === 1 ? newShots : [...prev, ...newShots]);
         }
-
-      } catch (err) {
-        console.error("Error:", err);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (err) {
+      console.error("Failed to fetch your shots:", err);
+    } finally {
+      // Turn off both loaders
+      setLoadingInitial(false);
+      setLoadingMore(false);
+    }
+  };
 
-    if (token) fetchMyShots();
-
+  // --- EFFECTS ---
+  // Initial Load (Page 1)
+  useEffect(() => {
+    if (token) {
+      setPage(1);
+      setHasMore(true);
+      fetchMyShots(1);
+    }
   }, [token]);
+
+  // --- HANDLERS ---
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchMyShots(nextPage);
+  };
 
   const handleShotDeleted = (deletedShotId) => {
     setMyShots((prev) => prev.filter(shot => shot.id !== deletedShotId));
   };
-
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10 pb-24">
@@ -49,7 +76,7 @@ const Profile = ({ currentUser, onLogout, token }) => {
       <div className="bg-white p-8 rounded-2xl shadow-md w-full max-w-md text-center mb-6 border-t-4 border-black">
         <h1 className="text-3xl font-bold mb-2">@{currentUser}</h1>
         <p className="text-gray-500 mb-6">
-          {loading ? "..." : `${myShots.length} Shots, the more the merrier!`}
+          {loadingInitial ? "..." : `${myShots.length} Shots, the more the merrier!`}
         </p>
 
         <button
@@ -63,7 +90,7 @@ const Profile = ({ currentUser, onLogout, token }) => {
       {/* --- MY SHOTS LIST --- */}
       <div className="w-full max-w-md space-y-4 px-4">
 
-        {loading ? (
+        {loadingInitial ? (
 
           // show 2 Skeletons while fetching
           <>
@@ -84,6 +111,21 @@ const Profile = ({ currentUser, onLogout, token }) => {
               onDelete={() => handleShotDeleted(shot.id)}
             />
           ))
+        )}
+
+        {/* LOAD MORE BUTTON */}
+        {hasMore && myShots.length > 0 && (
+          <button
+            onClick={handleLoadMore}
+            disabled={loadingMore}
+            className="w-full py-4 mt-4 text-gray-500 font-bold hover:text-black transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            {loadingMore ? "Loading..." : "Load more"}
+          </button>
+        )}
+
+        {!hasMore && (
+          <p className="text-center text-gray-400 mt-10">You have reached the end. Congrats... but consider posting</p>
         )}
 
       </div>
