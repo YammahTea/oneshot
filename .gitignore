@@ -6,3 +6,4 @@ oneshot.db
 Back/uploads
 .env
 front/.env
+migrate.py

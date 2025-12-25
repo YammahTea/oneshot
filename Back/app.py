@@ -494,6 +494,8 @@ async def get_my_shots(
       "owner": shot.owner.username,
       "owner_id": str(shot.owner.id),
 
+      "owner_avatar": shot.owner.avatar_url,
+
       "like_count": len(shot.likes),
 
       # Array of comments
@@ -542,3 +544,34 @@ async def delete_shot(
   await session.commit()
 
   return {"message": "Shot has been deleted successfully"}
+
+
+@app.post("/profile/avatar")
+async def upload_avatar(
+  pfp_image: UploadFile = File(...),
+  user: User = Depends(get_current_user),
+  session: AsyncSession = Depends(get_db)
+):
+  """
+  Upload a profile picture
+  1- Validate image
+  2- Save image in R2
+  3- Update user db with the avatar_url
+  """
+
+  # 1- Validate image
+  ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
+  if pfp_image.content_type not in ALLOWED_TYPES:
+    raise HTTPException(status_code=400, detail="Invalid file type. Only JPEG, PNG, and WEBP images are allowed.")
+
+  # 2- save image
+  file_extension = pfp_image.filename.split(".")[-1]
+  unique_name = f"avatar_{user.id}_{int(datetime.now().timestamp())}.{file_extension}"
+
+  avatar_url = save_file(pfp_image, unique_name)
+
+  # 3- update user db
+  user.avatar_url = avatar_url
+  await session.commit()
+
+  return {"message": "Avatar updated", "avatar_url": avatar_url}

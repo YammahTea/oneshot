@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Heart, MessageCircle, Send, Trash2 } from 'lucide-react'
+import { Heart, MessageCircle, Send, Trash2, User } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -13,6 +13,7 @@ export default function ShotCard({ token, shot, currentUser, onDelete }) {
   const [commentError, setCommentError] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  const [imageError, setImageError] = useState(false);
 
   // function to handle like
   const handleLike = async () => {
@@ -115,6 +116,16 @@ export default function ShotCard({ token, shot, currentUser, onDelete }) {
     }
   }
 
+  const getAvatar = () => {
+    if (shot.owner_avatar) {
+      return shot.owner_avatar.startsWith("http")
+        ? shot.owner_avatar
+        : `${API_URL}${shot.owner_avatar}`;
+    }
+    // generates a default avatar with user's name
+    return `https://ui-avatars.com/api/?name=${shot.owner}&background=random&color=fff&size=128`;
+  }
+
   const isOwner = shot.owner === currentUser;
 
   return (
@@ -122,7 +133,30 @@ export default function ShotCard({ token, shot, currentUser, onDelete }) {
 
       {/* HEADER */}
       <div className="flex justify-between items-baseline mb-2">
-        <p className="font-bold text-gray-700">@{shot.owner}</p>
+
+        {/* container for avatar + name */}
+        <div className="flex items-center gap-1">
+
+          {imageError ? (
+            // Fallback if r2 or ui-avatar fails
+            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center border border-gray-300">
+                <User size={20} className="text-gray-500" />
+            </div>
+
+          ) : (
+            // Normal: Try to show the image (Avatar or UI-Avatar)
+            <img
+              src={getAvatar()}
+              alt={shot.owner}
+              onError={() => setImageError(true)}
+              className="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm"
+            />
+          )}
+
+          <p className="font-bold text-gray-700 text-xl">@{shot.owner}</p>
+
+        </div>
+
 
         {/* THE TRASH ICON  */}
         {/* Only render if isOwner is true */}

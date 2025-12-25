@@ -15,6 +15,9 @@ class User(Base):
   # Username
   username: Mapped[str] = mapped_column(String(24), unique=True, index=True)
 
+  # PFP url, nullable = true so old users don't crash the app
+  avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)
+
   # Hashed password
   hashed_password: Mapped[str] = mapped_column(String, nullable=False)
 
