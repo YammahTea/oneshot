@@ -89,7 +89,7 @@ const Profile = ({ currentUser, onLogout, token }) => {
     setUploading(true);
 
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("pfp_image", file);
 
     try {
       const response = await fetch(`${API_URL}/profile/avatar`, {

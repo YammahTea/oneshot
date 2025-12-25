@@ -180,7 +180,7 @@ async def create_post(
 async def shots(
   page: int = 1, # default one page
   limit: int = 10, # 10 items per page
-  session: AsyncSession = Depends(get_db)):
+  db: AsyncSession = Depends(get_db)):
 
   """
   1-Grab 10 shots from the database by the created_at
@@ -206,7 +206,7 @@ async def shots(
         .limit(limit)
     )
 
-  result = await session.execute(query)
+  result = await db.execute(query)
   shots_list = result.scalars().unique().all()
 
   # Load shots data as a JSON in an array
@@ -460,7 +460,7 @@ async def get_my_shots(
   page: int = 1, # default one page
   limit: int = 10, # 10 items per page
   user: User = Depends(get_current_user),
-  session: AsyncSession = Depends(get_db)
+  db: AsyncSession = Depends(get_db)
 ):
   """
   Fetch ONLY the shots belonging to the currently logged in user.
@@ -480,7 +480,7 @@ async def get_my_shots(
     .limit(limit)
   )
 
-  result = await session.execute(query)
+  result = await db.execute(query)
   user_shots_list = result.scalars().unique().all()
 
   shots_data = []
@@ -518,7 +518,7 @@ async def get_my_shots(
 async def delete_shot(
   shot_id: str,
   user: User = Depends(get_current_user),
-  session: AsyncSession = Depends(get_db)
+  db: AsyncSession = Depends(get_db)
 ):
 
   # 1- Convert string to UUID
@@ -528,7 +528,7 @@ async def delete_shot(
     raise HTTPException(status_code=400, detail="Invalid Shot ID format")
 
   # 2- Find shot
-  result = await session.execute(select(Shot).where(Shot.id == shot_uuid))
+  result = await db.execute(select(Shot).where(Shot.id == shot_uuid))
   shot_to_delete = result.scalars().first()
 
   # 3- Check if shot exists
@@ -540,8 +540,8 @@ async def delete_shot(
     raise HTTPException(status_code=403, detail="Not authorized to delete this shot")
 
   # 5- Delete the shot
-  await session.delete(shot_to_delete)
-  await session.commit()
+  await db.delete(shot_to_delete)
+  await db.commit()
 
   return {"message": "Shot has been deleted successfully"}
 
@@ -550,7 +550,7 @@ async def delete_shot(
 async def upload_avatar(
   pfp_image: UploadFile = File(...),
   user: User = Depends(get_current_user),
-  session: AsyncSession = Depends(get_db)
+  db: AsyncSession = Depends(get_db)
 ):
   """
   Upload a profile picture
@@ -572,6 +572,6 @@ async def upload_avatar(
 
   # 3- update user db
   user.avatar_url = avatar_url
-  await session.commit()
+  await db.commit()
 
   return {"message": "Avatar updated", "avatar_url": avatar_url}
