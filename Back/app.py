@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Form, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, Form, UploadFile, File, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -56,7 +56,7 @@ async def get_current_user(
 ):
 
   credentials_exception = HTTPException(
-    status_code=401,
+    status_code=status.HTTP_401_UNAUTHORIZED,
     detail="Could not validate credentials",
     headers={"WWW-Authenticate": "Bearer"},
   )
@@ -64,7 +64,7 @@ async def get_current_user(
   # 1- Check Blacklist
   # If the token is in the trash, reject it immediately.
   if await is_token_blacklisted(token, redis):
-    raise HTTPException(status_code=401, detail="Token is invalid (Logged out)")
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token is invalid (Logged out)")
 
   try:
     # 2- Decode the Token
@@ -126,7 +126,7 @@ async def create_post(
   # 2.2- With database
   can_post = check_daily_limit(user.last_post_at)
   if not can_post:
-    raise HTTPException(status_code=429, detail="You have already made your post for the day.")
+    raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="You have already made your post for the day.")
 
   # 3- Process image (if it exists)
 
@@ -138,7 +138,7 @@ async def create_post(
 
     if image.content_type not in ALLOWED_TYPES:
       raise HTTPException(
-        status_code=400,
+        status_code=status.HTTP_400_BAD_REQUEST,
         detail="Invalid file type. Only JPEG, PNG, and WEBP images are allowed."
       )
 
@@ -263,20 +263,20 @@ async def like_shot(
   # 1.2- With database
   can_like = check_daily_limit(user.last_like_at)
   if not can_like:
-    raise HTTPException(status_code=429, detail="You already used your One Like for today.")
+    raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="You already used your One Like for today.")
 
   # 1.5- Check if the provided shot ID is valid
   try:
     shot_uuid = uuid.UUID(shot_id) # convert from str to uuid
   except ValueError:
-    raise HTTPException(status_code=400, detail="Invalid Shot ID format")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Shot ID format")
 
   # 2- Check if shot exists
   result = await db.execute(select(Shot).where(Shot.id == shot_uuid))
   target_shot = result.scalars().first()
 
   if not target_shot:
-    raise HTTPException(status_code=404, detail="This Shot doesn't even exist...")
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This Shot doesn't even exist...")
 
   # 3- Check if already liked
   # We look for a Like entry that matches BOTH this user AND this shot
@@ -290,7 +290,7 @@ async def like_shot(
 
   if existing_like:
     # Raise an error (Prevent duplicates)
-    raise HTTPException(status_code=400, detail="You already liked this shot! Are you trying to support it that much?")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You already liked this shot! Are you trying to support it that much?")
 
   """ TO DO: ADD OPTION TO UNLIKE """
 
@@ -330,20 +330,20 @@ async def post_comment(
   # 1.2- With database
   can_comment = check_daily_limit(user.last_comment_at)
   if not can_comment:
-    raise HTTPException(status_code=429, detail="You already used your One Comment for today.")
+    raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="You already used your One Comment for today.")
 
   # 1.5- Check if the provided shot ID is valid
   try:
     shot_uuid = uuid.UUID(shot_id) # convert from str to uuid
   except ValueError:
-    raise HTTPException(status_code=400, detail="Invalid Shot ID")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Shot ID")
 
   # 2- Check if shot exists
   result = await db.execute(select(Shot).where(Shot.id == shot_uuid))
   target_shot = result.scalars().first()
 
   if not target_shot:
-    raise HTTPException(status_code=404, detail="Shot not found")
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shot not found")
 
   # 3- Create comment + add comment to db and updated last act
   new_comment = Comment(
@@ -378,7 +378,7 @@ async def register(
   existing_user = result.scalars().first()
 
   if existing_user:
-    raise HTTPException(status_code=400, detail="Username already taken.")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken.")
 
   # 2- Hash password
   hashed_pwd = hash_password(user_data.password)
@@ -421,7 +421,7 @@ async def login(
   # 2- Check credentials
   if not user or not verify_password(form_data.password, user.hashed_password):
     raise HTTPException(
-      status_code=401,
+      status_code=status.HTTP_401_UNAUTHORIZED,
       detail=["Incorrect username or password"],
       headers={"WWW-Authenticate": "Bearer"}
     )
@@ -525,7 +525,7 @@ async def delete_shot(
   try:
     shot_uuid = uuid.UUID(shot_id)
   except ValueError:
-    raise HTTPException(status_code=400, detail="Invalid Shot ID format")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Shot ID format")
 
   # 2- Find shot
   result = await db.execute(select(Shot).where(Shot.id == shot_uuid))
@@ -533,11 +533,11 @@ async def delete_shot(
 
   # 3- Check if shot exists
   if not shot_to_delete:
-    raise HTTPException(status_code=404, detail="Shot doesn't exist")
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shot doesn't exist")
 
   # 4- Check if the shot belongs to the user
   if shot_to_delete.user_id != user.id:
-    raise HTTPException(status_code=403, detail="Not authorized to delete this shot")
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this shot")
 
   # 5- Delete the shot
   await db.delete(shot_to_delete)
@@ -562,7 +562,7 @@ async def upload_avatar(
   # 1- Validate image
   ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
   if pfp_image.content_type not in ALLOWED_TYPES:
-    raise HTTPException(status_code=400, detail="Invalid file type. Only JPEG, PNG, and WEBP images are allowed.")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid file type. Only JPEG, PNG, and WEBP images are allowed.")
 
   # 2- save image
   file_extension = pfp_image.filename.split(".")[-1]

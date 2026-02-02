@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 import uuid
 
 async def check_user_cooldown(user_id: uuid.UUID, redis_client):
@@ -18,7 +18,7 @@ async def check_user_cooldown(user_id: uuid.UUID, redis_client):
   if is_on_cooldown:
     ttl = await redis_client.ttl(key)
     raise HTTPException(
-      status_code=429,
+      status_code=status.HTTP_429_TOO_MANY_REQUESTS,
       detail=f"Whoa, slow down! Try again in {ttl} seconds."
     )
 
