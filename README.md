@@ -53,14 +53,19 @@ Built with a focus on clean architecture, hybrid cloud storage, and a responsive
 │   ├── core/                # Core Configuration
 │   │   ├── database.py      # Async Database & Session
 │   │   ├── models.py        # DB Schema
-│   │   ├── redis_client.py  # Connection Pool
 │   │   └── storage.py       # Hybrid Storage (R2 + Local Fallback)
 │   ├── services/            # Business Logic
 │   │   ├── auth.py          # JWT Handling & Hashing
 │   │   ├── handle.py        # Daily Limit Logic
-│   │   └── rate_limiter.py  # Redis Cooldowns
+│   │   ├── rate_limiter.py  # Redis Cooldowns
+│   │   └── redis_client.py  # Connection Pool
+│   ├── routers/            # Endpoint Routes
+│   │   ├── feed.py          # Display Posts
+│   │   ├── interaction.py        # Manage Interactions
+│   │   ├── login.py  # Manage Login & Logout & Registration
+│   │   └── profile.py  # Connection Pool
 │   ├── uploads/             # Local storage fallback
-│   └── app.py               # Main API Routes
+│   └── app.py               # Manage Routes Connection
 ├── front/
 │   ├── src/
 │   │   ├── components/      # Reusable UI

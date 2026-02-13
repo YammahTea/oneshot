@@ -9,7 +9,7 @@ import fakeredis.aioredis
 from Back.app import app
 from Back.core.database import get_db
 from Back.core.models import Base
-from Back.core.redis_client import get_redis
+from Back.services.redis_client import get_redis
 from Back.services.auth import create_access_token
 
 # 1- in memory sqlite db
