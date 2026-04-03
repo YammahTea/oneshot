@@ -89,7 +89,7 @@ Built with a focus on clean architecture, hybrid cloud storage, and a responsive
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YammahTea/oneshot
+git clone https://github.com/YammahTea/oneshot.git
 cd oneshot
 ```
 
